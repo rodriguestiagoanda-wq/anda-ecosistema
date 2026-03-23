@@ -1,87 +1,151 @@
-// ... (suas configurações iniciais e funções supaFetch permanecem iguais)
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANDA Ecossistema</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #0d1b3e; --blue: #1a3a6c; --azure: #2563ab; --sky: #3b82f6;
+            --green: #059669; --emerald: #10b981; --orange: #ea580c; --amber: #f59e0b;
+            --red: #dc2626; --purple: #7c3aed; --teal: #0891b2; --rose: #e11d48;
+            --white: #ffffff; --gray50: #f8fafc; --gray100: #f1f5f9;
+            --gray200: #e2e8f0; --gray400: #94a3b8; --gray600: #475569; --gray800: #1e293b;
+        }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:'DM Sans', sans-serif; background: var(--gray50); min-height: 100vh; display: flex; flex-direction: column; }
+        #loginScreen { display:flex; align-items:center; justify-content:center; min-height:100vh; background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 50%, var(--azure) 100%); position:fixed; inset:0; z-index:9999; }
+        .login-card { background:white; border-radius:24px; padding:48px 40px; width:400px; max-width:95vw; box-shadow:0 32px 80px rgba(0,0,0,0.35); display:flex; flex-direction:column; align-items:center; gap:20px; }
+        .login-logo { width:100px; height:100px; border-radius:50%; object-fit:cover; }
+        .login-title { font-family:'Outfit',sans-serif; font-size:26px; font-weight:800; color:var(--navy); }
+        .login-field { width:100%; display:flex; flex-direction:column; gap:6px; }
+        .login-field input { width:100%; padding:12px 16px; border:2px solid var(--gray200); border-radius:12px; }
+        .login-btn { width:100%; padding:14px; background:linear-gradient(135deg,var(--blue),var(--azure)); color:white; border:none; border-radius:12px; cursor:pointer; font-weight:700; }
+        #appShell { display:none; flex-direction:column; min-height:100vh; }
+        .topbar { background:linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%); color:white; padding:0 32px; height:64px; display:flex; align-items:center; gap:16px; }
+        .main { flex:1; padding:32px; max-width:1400px; margin:0 auto; width:100%; }
+        .welcome-banner { background:linear-gradient(135deg, var(--navy) 0%, var(--blue) 60%, var(--azure) 100%); border-radius:20px; padding:32px 36px; color:white; margin-bottom:32px; display:flex; justify-content:space-between; align-items:center; }
+        .modules-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:18px; }
+        .module-card { background:white; border-radius:18px; padding:24px; border:2px solid var(--gray200); cursor:pointer; text-decoration:none; color:inherit; transition: 0.2s; }
+        .module-card:hover { border-color: var(--azure); transform: translateY(-3px); }
+        .card-icon { font-size: 24px; margin-bottom: 10px; }
+        .card-title { font-weight: 800; font-size: 16px; margin-bottom: 5px; }
+        .card-desc { font-size: 12px; color: var(--gray600); }
+        .user-pill { background:rgba(255,255,255,.15); padding:6px 14px; border-radius:20px; display:flex; align-items:center; gap:8px; }
+    </style>
+</head>
+<body>
 
-// ── AJUSTE 1: Auto-login se já houver sessão ──
-window.onload = function() {
-  const savedUser = localStorage.getItem('anda_user');
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-    // Chama uma função interna simplificada para montar o dashboard sem pedir senha
-    showDashboard(currentUser);
-  }
-};
+<div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; color:white; align-items:center; justify-content:center;">A carregar...</div>
 
-// Função auxiliar para evitar repetição de código no window.onload e doLogin
-function showDashboard(found) {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appShell').style.display = 'flex';
-  
-  const initial = found.nome.charAt(0).toUpperCase();
-  document.getElementById('userAvatarLetter').textContent = initial;
-  document.getElementById('badgeNome').textContent = found.nome;
-  const roleLabel = {admin:'Administrador', gestor:'Gestor', viewer:'Visualizador'}[found.role] || found.role;
-  const distLabel = found.distrito ? ' · ' + found.distrito.replace(/,/g,' | ') : '';
-  document.getElementById('badgeRole').textContent = roleLabel + distLabel;
+<div id="loginScreen">
+    <div class="login-card">
+        <img src="https://jsyhbvtkuppacjmoljur.supabase.co/storage/v1/object/public/assets/logo_anda.jpg" class="login-logo" alt="ANDA">
+        <div class="login-title">ANDA Ecossistema</div>
+        <div class="login-field">
+            <label>Utilizador</label>
+            <input type="text" id="loginUser">
+        </div>
+        <div class="login-field">
+            <label>Senha</label>
+            <input type="password" id="loginPass">
+        </div>
+        <div id="loginError" style="color:red; display:none; font-size:12px;">Credenciais incorretas</div>
+        <button class="login-btn" onclick="doLogin()">Entrar</button>
+    </div>
+</div>
 
-  document.getElementById('welcomeMsg').textContent = 'Bem-vindo, ' + found.nome.split(' ')[0] + '!';
-  document.getElementById('welcomeSub').textContent = 'Seleccione um módulo para começar · ' + new Date().toLocaleDateString('pt-MZ', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+<div id="appShell">
+    <div class="topbar">
+        <div class="topbar-title">ANDA Ecossistema</div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:15px;">
+            <div class="user-pill">
+                <span id="badgeNome">---</span>
+            </div>
+            <button onclick="doLogout()" style="background:none; border:1px solid white; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;">Sair</button>
+        </div>
+    </div>
 
-  if (found.role === 'admin' || found.role === 'gestor') {
-    document.getElementById('btnAudit').style.display = '';
-    document.getElementById('btnArchive').style.display = '';
-    if (found.role === 'admin') document.getElementById('btnUsers').style.display = '';
-  }
-}
+    <div class="main">
+        <div class="welcome-banner">
+            <div>
+                <h2 id="welcomeMsg">Bem-vindo!</h2>
+                <p>Seleccione um módulo para começar</p>
+            </div>
+        </div>
 
-// ── LOGIN ──
-async function doLogin() {
-  const u = document.getElementById('loginUser').value.trim().toLowerCase();
-  const p = document.getElementById('loginPass').value;
-  if (!u || !p) return;
-  showLoading('A verificar credenciais...');
-  const users = await supaFetch('app_users', 'GET', null, '?order=id.asc');
-  hideLoading();
-  if (!users) { showToast('Erro de ligação ao servidor', 'error'); return; }
-  const found = users.find(function(x) { return x.username.toLowerCase() === u && x.password === p; });
-  
-  if (!found) {
-    document.getElementById('loginError').style.display = 'block';
-    return;
-  }
+        <div class="modules-grid">
+            <div class="module-card" onclick="goTo('efectividade')">
+                <div class="card-icon">📊</div>
+                <div class="card-title">Folha de Efectividade</div>
+                <div class="card-desc">Registo de presenças, faltas e efectividade mensal.</div>
+            </div>
+            </div>
+    </div>
+</div>
 
-  // AJUSTE 2: Salvar a sessão de forma persistente
-  localStorage.setItem('anda_user', JSON.stringify(found));
-  currentUser = found;
-  
-  showDashboard(found);
+<script>
+    const SUPA_URL = 'https://jsyhbvtkuppacjmoljur.supabase.co';
+    const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzeWhidnRrdXBwYWNqbW9sanVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjAwMjUsImV4cCI6MjA4OTgzNjAyNX0.T6krFPXGv76G2L1XinhOyNs_WQQIiwit7oRkKc39ocQ';
 
-  // Log e Toast
-  supaFetch('audit_log', 'POST', {
-    username: found.username,
-    nome_utilizador: found.nome,
-    tipo: 'login',
-    detalhe: 'Sessão iniciada no Dashboard'
-  });
-  showToast('✅ Bem-vindo, ' + found.nome.split(' ')[0] + '!', 'success');
-}
+    let currentUser = null;
 
-function doLogout() {
-  if (!confirm('Terminar sessão?')) return;
-  // AJUSTE 3: Limpar o localStorage ao sair
-  localStorage.removeItem('anda_user');
-  
-  // (restante do seu código de logout...)
-  currentUser = null;
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('appShell').style.display = 'none';
-  // ...
-}
+    async function supaFetch(table, method, body, params = '') {
+        const url = `${SUPA_URL}/rest/v1/${table}${params}`;
+        const headers = {
+            'apikey': SUPA_KEY,
+            'Authorization': `Bearer ${SUPA_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        const opts = { method, headers };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return res.ok ? await res.json() : null;
+    }
 
-// ── NAVIGATION ──
-function goTo(module) {
-  const urls = { 'efectividade': 'efectividade.html' };
-  if (urls[module]) {
-    // Garantimos que o usuário atual está salvo antes de mudar de página
-    localStorage.setItem('anda_user', JSON.stringify(currentUser));
-    window.location.href = urls[module];
-  }
-}
+    window.onload = function() {
+        const savedUser = localStorage.getItem('anda_user');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            showDashboard(currentUser);
+        }
+    };
+
+    function showDashboard(user) {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appShell').style.display = 'flex';
+        document.getElementById('badgeNome').textContent = user.nome;
+        document.getElementById('welcomeMsg').textContent = `Bem-vindo, ${user.nome.split(' ')[0]}!`;
+    }
+
+    async function doLogin() {
+        const u = document.getElementById('loginUser').value.trim().toLowerCase();
+        const p = document.getElementById('loginPass').value;
+        
+        const users = await supaFetch('app_users', 'GET', null, `?username=eq.${u}`);
+        
+        if (users && users.length > 0 && users[0].password === p) {
+            currentUser = users[0];
+            localStorage.setItem('anda_user', JSON.stringify(currentUser));
+            showDashboard(currentUser);
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+        }
+    }
+
+    function doLogout() {
+        localStorage.removeItem('anda_user');
+        location.reload();
+    }
+
+    function goTo(module) {
+        if (module === 'efectividade') {
+            window.location.href = "efectividade.html";
+        }
+    }
+</script>
+
+</body>
+</html>
