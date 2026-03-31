@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>ANDA — Diagnóstico Neon</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; padding:30px; }
+h2 { color:#1a3a6c; margin-bottom:20px; }
+.card { background:white; border-radius:12px; padding:20px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.card h3 { font-size:14px; color:#64748b; margin-bottom:12px; text-transform:uppercase; letter-spacing:.5px; }
+.row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+.row:last-child { border-bottom:none; }
+.badge { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+.ok   { background:#dcfce7; color:#166534; }
+.err  { background:#fef2f2; color:#991b1b; }
+.warn { background:#fef9c3; color:#854d0e; }
+.info { background:#eff6ff; color:#1e40af; }
+.label { flex:1; color:#1e293b; }
+.val   { color:#64748b; font-size:12px; }
+button { background:#1a3a6c; color:white; border:none; border-radius:8px; padding:10px 24px; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:20px; }
+button:hover { background:#2563ab; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+#log { background:#1e293b; color:#94a3b8; padding:16px; border-radius:8px; font-family:monospace; font-size:12px; min-height:60px; white-space:pre-wrap; margin-top:16px; }
+.spin { display:inline-block; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<h2>🔧 ANDA Ecossistema — Diagnóstico Neon</h2>
+<button id="btnRun" onclick="runDiag()">▶ Executar Diagnóstico</button>
+
+<div id="results" style="display:none">
+
+  <div class="card">
+    <h3>🌐 Ligação ao Neon</h3>
+    <div class="row"><span class="label">Endpoint</span><span class="val" id="ep">—</span></div>
+    <div class="row"><span class="label">Estado da ligação</span><span id="conn_status">—</span></div>
+    <div class="row"><span class="label">Tempo de resposta</span><span class="val" id="conn_time">—</span></div>
+  </div>
+
+  <div class="card">
+    <h3>🗄️ Tabelas</h3>
+    <div id="tables_list"></div>
+  </div>
+
+  <div class="card">
+    <h3>👥 Colaboradores</h3>
+    <div class="row"><span class="label">Total activos</span><span id="col_total">—</span></div>
+    <div class="row"><span class="label">Esperado</span><span class="val">78</span></div>
+    <div class="row"><span class="label">Amauro de Luis Magaio</span><span id="col_amauro">—</span></div>
+    <div class="row"><span class="label">Ivanilde Joao Save</span><span id="col_ivan">—</span></div>
+    <div class="row"><span class="label">Madalena Filipe Tsenga</span><span id="col_mad">—</span></div>
+    <div class="row"><span class="label">Arcinio Manuel Salige</span><span id="col_arc">—</span></div>
+    <div class="row"><span class="label">Chiliana Antonio</span><span id="col_chil">—</span></div>
+  </div>
+
+  <div class="card">
+    <h3>🔑 Utilizadores</h3>
+    <div id="users_list"></div>
+  </div>
+
+  <div class="card">
+    <h3>📋 Resultado Final</h3>
+    <div id="final_result"></div>
+  </div>
+
+</div>
+
+<div id="log"></div>
+
+<script>
+
+
+function log(msg) {
+  document.getElementById('log').textContent += msg + '\n';
+}
+
+function badge(text, type) {
+  return '<span class="badge ' + type + '">' + text + '</span>';
+}
+
+const WORKER_URL = 'https://anda-neon.rodriguestiago-anda.workers.dev';
+
+async function neon(sql, params) {
+  const res = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql: sql, params: params || [] })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
+  const d = await res.json();
+  return d.rows || [];
+}
+
+async function runDiag() {
+  document.getElementById('btnRun').disabled = true;
+  document.getElementById('btnRun').innerHTML = '<span class="spin">⏳</span> A verificar...';
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('log').textContent = '';
+  document.getElementById('ep').textContent = WORKER_URL;
+
+  let allOk = true;
+
+  // 1. Test connection
+  log('→ A testar ligação...');
+  try {
+    const t0 = Date.now();
+    await neon('SELECT 1');
+    const ms = Date.now() - t0;
+    document.getElementById('conn_status').innerHTML = badge('✅ Ligado', 'ok');
+    document.getElementById('conn_time').textContent = ms + 'ms';
+    log('✅ Ligação OK (' + ms + 'ms)');
+  } catch(e) {
+    document.getElementById('conn_status').innerHTML = badge('❌ Falhou', 'err');
+    log('❌ Erro de ligação: ' + e.message);
+    document.getElementById('btnRun').disabled = false;
+    document.getElementById('btnRun').textContent = '▶ Executar Diagnóstico';
+    allOk = false;
+  }
+
+  // 2. Check tables
+  log('\n→ A verificar tabelas...');
+  const required = [
+    'colaboradores','colaboradores_novos','presencas',
+    'recargas','transporte','meses_bloqueados',
+    'meses_bloqueados_recargas','meses_bloqueados_transporte',
+    'app_users','audit_log','arquivo_colaboradores'
+  ];
+  let tablesHtml = '';
+  try {
+    const rows = await neon(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      ORDER BY table_name
+    `);
+    const found = rows.map(r => r.table_name);
+    required.forEach(function(t) {
+      const exists = found.includes(t);
+      if (!exists) allOk = false;
+      tablesHtml += '<div class="row"><span class="label">' + t + '</span>' +
+        badge(exists ? '✅ Existe' : '❌ Falta', exists ? 'ok' : 'err') + '</div>';
+      log((exists ? '✅' : '❌') + ' ' + t);
+    });
+  } catch(e) {
+    tablesHtml = '<div class="row"><span class="label">Erro ao verificar tabelas</span>' + badge('❌', 'err') + '</div>';
+    log('❌ Erro: ' + e.message);
+    allOk = false;
+  }
+  document.getElementById('tables_list').innerHTML = tablesHtml;
+
+  // 3. Check colaboradores
+  log('\n→ A verificar colaboradores...');
+  try {
+    const rows = await neon('SELECT COUNT(*) as total FROM colaboradores WHERE activo = true');
+    const total = parseInt(rows[0].total);
+    const ok = total === 78;
+    if (!ok) allOk = false;
+    document.getElementById('col_total').innerHTML =
+      total + ' ' + badge(ok ? '✅ Correcto' : '⚠️ Esperado 78', ok ? 'ok' : 'warn');
+    log((ok?'✅':'⚠️') + ' Colaboradores: ' + total + ' (esperado 78)');
+
+    // Check specific people
+    const checks = [
+      ['col_amauro', 'amauro',    'MUTARARA'],
+      ['col_ivan',   'ivanilde',  'CIDADE DE TETE'],
+      ['col_mad',    'madalena',  'ANGÓNIA'],
+      ['col_arc',    'arcinio',   null],
+      ['col_chil',   'chiliana',  null],
+    ];
+    for (const [elId, search, expectedDist] of checks) {
+      const r = await neon("SELECT nome, distrito FROM colaboradores WHERE LOWER(nome) LIKE $1", ['%'+search+'%']);
+      if (r.length > 0) {
+        const distOk = !expectedDist || r[0].distrito === expectedDist;
+        if (!distOk) allOk = false;
+        document.getElementById(elId).innerHTML =
+          badge('✅ ' + r[0].distrito, distOk ? 'ok' : 'warn');
+        log('✅ ' + r[0].nome + ' → ' + r[0].distrito);
+      } else {
+        document.getElementById(elId).innerHTML = badge('❌ Não encontrado', 'err');
+        log('❌ ' + search + ' não encontrado');
+        allOk = false;
+      }
+    }
+  } catch(e) {
+    log('❌ Erro colaboradores: ' + e.message);
+    allOk = false;
+  }
+
+  // 4. Check users
+  log('\n→ A verificar utilizadores...');
+  let usersHtml = '';
+  try {
+    const rows = await neon('SELECT nome, username, role, distrito FROM app_users ORDER BY id');
+    rows.forEach(function(u) {
+      usersHtml += '<div class="row">' +
+        '<span class="label">' + u.nome + ' <span style="color:#94a3b8">(' + u.username + ')</span></span>' +
+        badge(u.role, u.role === 'admin' ? 'info' : 'ok') +
+        (u.distrito ? '<span class="val">' + u.distrito + '</span>' : '') +
+        '</div>';
+      log('✅ ' + u.username + ' [' + u.role + ']' + (u.distrito?' · '+u.distrito:''));
+    });
+    if (rows.length === 0) {
+      usersHtml = '<div class="row"><span class="label">Sem utilizadores</span>' + badge('❌ Falta executar SQL', 'err') + '</div>';
+      allOk = false;
+    }
+  } catch(e) {
+    usersHtml = '<div class="row"><span class="badge err">❌ Erro: ' + e.message.slice(0,60) + '</span></div>';
+    allOk = false;
+  }
+  document.getElementById('users_list').innerHTML = usersHtml;
+
+  // Final result
+  document.getElementById('final_result').innerHTML = allOk
+    ? '<div class="row">' + badge('🎉 Tudo configurado correctamente! App pronto a usar.', 'ok') + '</div>'
+    : '<div class="row">' + badge('⚠️ Há problemas. Execute o neon_setup.sql no Neon SQL Editor.', 'warn') + '</div>';
+  log('\n' + (allOk ? '🎉 TUDO OK!' : '⚠️ Executar neon_setup.sql no Neon SQL Editor'));
+
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnRun').textContent = '▶ Executar Diagnóstico';
+}
+</script>
+</body>
+</html>
