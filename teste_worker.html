@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Teste Worker</title>
+<style>
+body { font-family: monospace; padding: 30px; background: #1e293b; color: #94a3b8; }
+button { background: #2563ab; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 5px; }
+#log { margin-top: 20px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; }
+.ok  { color: #4ade80; }
+.err { color: #f87171; }
+.inf { color: #60a5fa; }
+</style>
+</head>
+<body>
+<h2 style="color:white">🔧 Teste Worker + Neon</h2>
+
+<button onclick="testGet()">1. Testar GET worker</button>
+<button onclick="testPost()">2. Testar POST simples</button>
+<button onclick="testUsers()">3. Testar app_users</button>
+<button onclick="testAll()">4. Testar tudo</button>
+
+<div id="log">Clique num botão para testar...</div>
+
+<script>
+const WORKER = 'https://anda-neon.rodriguestiago-anda.workers.dev';
+
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  const ts = new Date().toLocaleTimeString();
+  el.innerHTML += '<span class="' + (cls||'inf') + '">[' + ts + '] ' + msg + '</span>\n';
+}
+
+async function testGet() {
+  log('→ GET ' + WORKER);
+  try {
+    const r = await fetch(WORKER);
+    const t = await r.text();
+    log('Status: ' + r.status, r.ok ? 'ok' : 'err');
+    log('Response: ' + t, r.ok ? 'ok' : 'err');
+  } catch(e) {
+    log('❌ Erro: ' + e.message, 'err');
+  }
+}
+
+async function testPost() {
+  log('\n→ POST { sql: "SELECT 1 as test" }');
+  try {
+    const r = await fetch(WORKER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sql: 'SELECT 1 as test' })
+    });
+    const t = await r.text();
+    log('Status: ' + r.status, r.ok ? 'ok' : 'err');
+    log('Response: ' + t, r.ok ? 'ok' : 'err');
+  } catch(e) {
+    log('❌ Erro: ' + e.message, 'err');
+    log('Tipo: ' + e.constructor.name, 'err');
+  }
+}
+
+async function testUsers() {
+  log('\n→ POST { sql: "SELECT * FROM app_users" }');
+  try {
+    const r = await fetch(WORKER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sql: 'SELECT id, nome, username, role FROM app_users ORDER BY id' })
+    });
+    const t = await r.text();
+    log('Status: ' + r.status, r.ok ? 'ok' : 'err');
+    log('Response: ' + t.slice(0, 500), r.ok ? 'ok' : 'err');
+  } catch(e) {
+    log('❌ Erro: ' + e.message, 'err');
+  }
+}
+
+async function testAll() {
+  document.getElementById('log').innerHTML = '';
+  await testGet();
+  await testPost();
+  await testUsers();
+  log('\n✅ Testes concluídos', 'ok');
+}
+</script>
+</body>
+</html>
