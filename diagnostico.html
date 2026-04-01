@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head><meta charset="UTF-8"><title>ANDA Diagnóstico</title>
+<style>
+body{font-family:monospace;padding:20px;background:#0f172a;color:#94a3b8;}
+h2{color:white;margin-bottom:16px;}
+button{background:#1d4ed8;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;margin:4px;}
+button:hover{opacity:.8;}
+#log{margin-top:16px;white-space:pre-wrap;font-size:12px;line-height:1.8;}
+.ok{color:#4ade80;} .err{color:#f87171;} .warn{color:#fbbf24;} .inf{color:#60a5fa;}
+</style>
+</head>
+<body>
+<h2>🔧 ANDA Diagnóstico Completo</h2>
+<button onclick="runAll()">▶ Executar Todos os Testes</button>
+<button onclick="document.getElementById('log').innerHTML=''">Limpar</button>
+<div id="log">Clique em "Executar Todos os Testes"...</div>
+<script>
+const W = 'https://anda-neon.rodriguestiago-anda.workers.dev';
+function log(msg, cls) {
+  document.getElementById('log').innerHTML += '<span class="'+(cls||'inf')+'">'+msg+'</span>\n';
+}
+async function sql(q) {
+  try {
+    const r = await fetch(W, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql:q})});
+    const d = await r.json();
+    return {ok:r.ok, rows:d.rows||[], count:d.rowCount||0, error:d.error};
+  } catch(e) { return {ok:false, error:e.message, rows:[]}; }
+}
+async function runAll() {
+  document.getElementById('log').innerHTML = '';
+  
+  log('=== 1. Worker ===');
+  try {
+    const r = await fetch(W);
+    const d = await r.json();
+    log('Worker: '+JSON.stringify(d), d.neon==='connected'?'ok':'err');
+  } catch(e) { log('Worker ERROR: '+e.message,'err'); }
+
+  log('\n=== 2. Colaboradores ===');
+  const c1 = await sql('SELECT COUNT(*) as n FROM colaboradores WHERE activo = true');
+  log('Count: '+(c1.rows[0]?.n||'error'), c1.ok&&c1.rows[0]?.n>0?'ok':'err');
+  if (!c1.ok) log('Error: '+c1.error,'err');
+  
+  log('\n=== 3. Sample colaboradores ===');
+  const c2 = await sql('SELECT id, nome, distrito FROM colaboradores WHERE activo = true ORDER BY id LIMIT 3');
+  if (c2.ok && c2.rows.length>0) {
+    c2.rows.forEach(r => log('  '+r.id+' · '+r.nome+' · '+r.distrito,'ok'));
+  } else {
+    log('No rows: '+c2.error,'err');
+  }
+
+  log('\n=== 4. app_users ===');
+  const u = await sql('SELECT username, role FROM app_users ORDER BY id');
+  if (u.ok) u.rows.forEach(r => log('  '+r.username+' ['+r.role+']','ok'));
+  else log('Error: '+u.error,'err');
+
+  log('\n=== 5. prova_vida table ===');
+  const pv = await sql('SELECT COUNT(*) as n FROM prova_vida WHERE activo = true');
+  log('prova_vida rows: '+(pv.rows[0]?.n||'0/error'), pv.ok?'ok':'warn');
+  if (!pv.ok) log('Error (table may not exist yet): '+pv.error,'warn');
+
+  log('\n=== 6. historico_contratos table ===');
+  const hc = await sql('SELECT COUNT(*) as n FROM historico_contratos');
+  log('historico_contratos: '+(hc.ok?'exists':'missing'), hc.ok?'ok':'warn');
+
+  log('\n=== 7. SessionStorage ===');
+  const ss = sessionStorage.getItem('anda_colaboradores');
+  if (ss) {
+    try {
+      const arr = JSON.parse(ss);
+      log('anda_colaboradores: '+arr.length+' entries', arr.length>0?'ok':'warn');
+    } catch(e) { log('Parse error: '+e.message,'err'); }
+  } else {
+    log('anda_colaboradores: not set','warn');
+  }
+  const su = sessionStorage.getItem('anda_user');
+  log('anda_user: '+(su?'set':'NOT SET'), su?'ok':'err');
+
+  log('\n=== DONE ===','ok');
+}
+</script>
+</body>
+</html>
