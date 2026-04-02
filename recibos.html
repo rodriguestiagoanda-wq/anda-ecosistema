@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ANDA · Recibos de Salário</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#f0f4f8;color:#1e293b;font-size:13px;}
+:root{--navy:#0f1f3d;--blue:#1d4ed8;--border:#cbd5e1;}
+.topbar{background:linear-gradient(135deg,#0f1f3d,#1e3a8a);padding:10px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(15,31,61,.3);}
+.topbar img.logo{height:34px;width:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.3);}
+.topbar img.lfdc{height:26px;object-fit:contain;opacity:.85;}
+.ttxt h1{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:white;}
+.ttxt span{font-size:10px;color:rgba(255,255,255,.6);}
+.tbr{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.tbtn{background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;}
+.tbtn:hover{background:rgba(255,255,255,.22);}
+.toolbar{background:white;border-bottom:1px solid #e2e8f0;padding:8px 20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.fsel,.finp{padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;outline:none;background:white;}
+.fsel:focus,.finp:focus{border-color:#1d4ed8;}
+.main{padding:16px 20px;}
+.count-lbl{font-size:12px;color:#64748b;font-weight:600;}
+
+/* ── RECIBO CONTAINER ─────────────────────────────── */
+.recibos-grid{display:flex;flex-direction:column;gap:0;}
+.page-wrap{background:white;margin-bottom:20px;border-radius:8px;border:1px solid #cbd5e1;box-shadow:0 2px 8px rgba(15,31,61,.06);overflow:hidden;}
+
+/* Each page = 1 A4, contains 2 identical canhões separated by dashed line */
+.canhao{padding:10mm 12mm;border-bottom:2px dashed #9ca3af;position:relative;}
+.canhao:last-child{border-bottom:none;}
+
+/* ── RECIBO LAYOUT (matching the model) ─────────────── */
+.rec-title-area{text-align:center;margin-bottom:6px;}
+.rec-title-area h2{font-size:12pt;font-weight:800;color:#0f1f3d;letter-spacing:.5px;}
+.rec-title-area .proj{font-size:8pt;color:#475569;margin-top:2px;}
+
+.rec-info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--border);margin-bottom:4px;}
+.rec-info-grid .cell{padding:4px 7px;border-right:1px solid var(--border);}
+.rec-info-grid .cell:last-child{border-right:none;}
+.rec-info-grid .cell-lbl{font-size:7pt;font-weight:700;text-transform:uppercase;color:#475569;display:block;}
+.rec-info-grid .cell-val{font-size:9pt;font-weight:600;color:#0f1f3d;display:block;min-height:14px;}
+
+.rec-info-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border:1px solid var(--border);border-top:none;margin-bottom:4px;}
+.rec-info-4 .cell{padding:4px 7px;border-right:1px solid var(--border);}
+.rec-info-4 .cell:last-child{border-right:none;}
+
+.rec-payment-row{display:grid;grid-template-columns:1fr 1fr 2fr 1fr;gap:0;border:1px solid var(--border);border-top:none;margin-bottom:6px;}
+.rec-payment-row .cell{padding:4px 7px;border-right:1px solid var(--border);}
+.rec-payment-row .cell:last-child{border-right:none;}
+
+/* Abonos/Descontos table */
+.rec-tables{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+.rec-tbl{border:1px solid var(--border);border-collapse:collapse;width:100%;font-size:8pt;}
+.rec-tbl thead th{background:#1e293b;color:white;padding:4px 8px;font-size:7.5pt;font-weight:700;text-align:left;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.rec-tbl thead th:last-child{text-align:right;}
+.rec-tbl tbody td{padding:3px 8px;border-bottom:1px solid #f1f5f9;}
+.rec-tbl tbody td:last-child{text-align:right;font-weight:600;}
+.rec-tbl tfoot td{padding:4px 8px;font-weight:700;background:#f8fafc;border-top:1px solid var(--border);}
+.rec-tbl tfoot td:last-child{text-align:right;}
+
+/* TOTAL LÍQUIDO */
+.rec-liquido{border:2px solid #0f1f3d;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.rec-liquido .lbl{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0f1f3d;}
+.rec-liquido .val{font-size:13pt;font-weight:800;color:#0f1f3d;}
+
+/* INFORMAÇÃO ACUMULADA */
+.rec-acum{border:1px solid var(--border);margin-bottom:6px;}
+.rec-acum-hdr{background:#0f1f3d;color:white;font-size:8pt;font-weight:700;padding:3px 8px;text-transform:uppercase;letter-spacing:.4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.rec-acum-body{display:grid;grid-template-columns:1fr 1fr;}
+.rec-acum-cell{padding:5px 10px;border-right:1px solid var(--border);}
+.rec-acum-cell:last-child{border-right:none;}
+.rec-acum-lbl{font-size:7pt;text-transform:uppercase;color:#64748b;font-weight:700;display:block;}
+.rec-acum-val{font-size:10pt;font-weight:700;color:#0f1f3d;display:block;}
+
+/* SIGNATURES */
+.rec-sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;}
+.rec-sig{text-align:center;}
+.rec-sig .sig-line{height:36px;border-bottom:1px solid #334155;margin-bottom:4px;}
+.rec-sig .sig-lbl{font-size:7.5pt;color:#64748b;text-transform:uppercase;letter-spacing:.3px;}
+.rec-sig .sig-name{font-size:8.5pt;font-weight:700;color:#0f1f3d;margin-top:2px;}
+
+/* LOADING */
+#loadOv{display:none;position:fixed;inset:0;z-index:9000;background:rgba(255,255,255,.8);backdrop-filter:blur(2px);align-items:center;justify-content:center;gap:12px;}
+#loadOv.active{display:flex;}
+.spin{width:30px;height:30px;border:3px solid #e2e8f0;border-top-color:#1d4ed8;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+#toasts{position:fixed;bottom:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:6px;}
+.toast{padding:8px 14px;border-radius:7px;font-size:12px;font-weight:600;color:white;animation:tsl .3s ease;}
+.toast.success{background:#10b981;}.toast.error{background:#ef4444;}.toast.info{background:#3b82f6;}.toast.warn{background:#f59e0b;}
+@keyframes tsl{from{transform:translateX(50px);opacity:0;}to{transform:none;opacity:1;}}
+
+@media print{
+  @page{size:A4 portrait;margin:0;}
+  html,body{background:white!important;}
+  .topbar,.toolbar,#toasts,#loadOv,.count-lbl{display:none!important;}
+  .main{padding:0!important;}
+  .recibos-grid{gap:0!important;}
+  .page-wrap{
+    border:none!important;border-radius:0!important;box-shadow:none!important;
+    margin:0!important;page-break-after:always;break-after:page;
+    width:210mm;height:297mm;display:flex;flex-direction:column;
+  }
+  .page-wrap:last-child{page-break-after:auto;break-after:auto;}
+  .canhao{
+    flex:1;padding:8mm 10mm;
+    border-bottom:2px dashed #9ca3af!important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .canhao:last-child{border-bottom:none!important;}
+  .rec-liquido{border:2px solid #0f1f3d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .rec-tbl thead th{background:#1e293b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .rec-acum-hdr{background:#0f1f3d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+</style>
+</head>
+<body>
+<div id="loadOv"><div class="spin"></div><span style="font-size:11px;color:#64748b;">A carregar...</span></div>
+<div id="toasts"></div>
+<div class="topbar">
+  <img class="logo" src="data:image/jpeg;base64,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" alt="ANDA">
+  <img class="lfdc" src="data:image/png;base64,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" alt="FDC">
+  <div class="ttxt"><h1>Recibos de Salário</h1><span>ANDA · VIVA+ / FDC · Tete</span></div>
+  <div class="tbr">
+    <span id="badgeNome" style="color:rgba(255,255,255,.8);font-size:11px;font-weight:600;"></span>
+    <span id="badgeRole" style="color:rgba(255,255,255,.5);font-size:10px;"></span>
+    <button class="tbtn" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="tbtn" onclick="location.href='folha_salario.html'">📋 Folha</button>
+    <button class="tbtn" onclick="doLogout()">Sair</button>
+  </div>
+</div>
+<div class="toolbar">
+  <label style="font-size:11px;font-weight:700;color:#64748b;">Mês:</label>
+  <select class="fsel" id="selMes" onchange="renderRecibos()">
+    <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+    <option value="3">Março</option><option value="4">Abril</option>
+    <option value="5">Maio</option><option value="6">Junho</option>
+    <option value="7">Julho</option><option value="8">Agosto</option>
+    <option value="9">Setembro</option><option value="10">Outubro</option>
+    <option value="11">Novembro</option><option value="12">Dezembro</option>
+    <option value="13">13º Mês</option>
+  </select>
+  <label style="font-size:11px;font-weight:700;color:#64748b;">Ano:</label>
+  <select class="fsel" id="selAno" onchange="renderRecibos()">
+    <option value="2026" selected>2026</option><option value="2025">2025</option>
+  </select>
+  <select class="fsel" id="fDist" onchange="renderRecibos()">
+    <option value="">Todos os distritos</option>
+    <option>CIDADE DE TETE</option><option>MOATIZE</option><option>CHIFUNDE</option>
+    <option>ANGÓNIA</option><option>CAHORA-BASSA</option><option>MUTARARA</option>
+    <option>Tete</option><option>Sede</option>
+  </select>
+  <select class="fsel" id="fGrupo" onchange="renderRecibos()">
+    <option value="">Todos os grupos</option>
+    <option>Staff</option><option>MTS</option><option>HSH</option><option>Reclusos</option>
+  </select>
+  <label style="font-size:11px;font-weight:700;color:#64748b;">Dep. RH:</label>
+  <input class="finp" id="inpDepRH" placeholder="Responsável Dep. Recursos Humanos..." style="min-width:200px;" oninput="renderRecibos()">
+  <span class="count-lbl" id="countLbl" style="margin-left:auto;">— recibos</span>
+</div>
+<div class="main">
+  <div class="recibos-grid" id="recibosGrid">
+    <div style="text-align:center;padding:60px;color:#94a3b8;">
+      <div style="font-size:40px;margin-bottom:12px;">🧾</div>
+      <p>A carregar recibos...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER_URL = 'https://anda-neon.rodriguestiago-anda.workers.dev';
+const COLABS_JAN2026=[
+{nr:1,nome:"Francisco Alberto Cumbucane",cargo:"Oficial de M & A",grupo:"Staff",distrito:"Tete",bruto:87565.0,nib:"58141995101",banco:"BCI",dias:30,irps:13928.75,deps:4,nuit:"111141967",inss_nr:"906618505",activo:true},
+{nr:2,nome:"Nelsone Pedro Mutepa",cargo:"Supervisor Distrital",grupo:"MTS",distrito:"Tete",bruto:38638.1,nib:"2049459151016",banco:"BCI",dias:30,irps:2802.62,deps:6,nuit:"110634811",inss_nr:"",activo:true},
+{nr:3,nome:"Genito Jose Afonso",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Tete",bruto:10669.52,nib:"18913001910001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"109969370",inss_nr:"905680320",activo:true},
+{nr:4,nome:"Alima Ali Mussequece",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Tete",bruto:10669.52,nib:"15576308610001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"125226574",inss_nr:"920624672",activo:true},
+{nr:5,nome:"Maria Diolinda Olimpio  Xavier",cargo:"Paralegal",grupo:"MTS",distrito:"Tete",bruto:22047.62,nib:"2067715061001",banco:"BCI",dias:30,irps:129.76,deps:1,nuit:"137699461",inss_nr:"920847139",activo:true},
+{nr:6,nome:"Anita Albano Vale Rabeca",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Tete",bruto:10669.52,nib:"10173263110001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"115680757",inss_nr:"921645958",activo:true},
+{nr:7,nome:"Herminia Rogerio Chiau",cargo:"Paralegal",grupo:"MTS",distrito:"Moatize",bruto:22047.62,nib:"2743363810001",banco:"BCI",dias:30,irps:129.76,deps:1,nuit:"110568959",inss_nr:"921436511",activo:true},
+{nr:8,nome:"Yolanda David de Castro",cargo:"Paralegal",grupo:"MTS",distrito:"Tete",bruto:22047.62,nib:"6867687410001",banco:"BCI",dias:30,irps:129.76,deps:1,nuit:"141319000",inss_nr:"921436659",activo:true},
+{nr:9,nome:"Danilson Bertil Albano",cargo:"Supervisor Distrital",grupo:"MTS",distrito:"Moatize",bruto:38638.1,nib:"0734423570",banco:"BCI",dias:30,irps:2952.62,deps:0,nuit:"102864255",inss_nr:"905644386",activo:true},
+{nr:10,nome:"Samuel Epulane Almeida",cargo:"Supervisor Distrital",grupo:"MTS",distrito:"Chifunde",bruto:38638.1,nib:"22212961310001",banco:"BCI",dias:30,irps:2852.62,deps:3,nuit:"114995851",inss_nr:"921450831",activo:true},
+{nr:11,nome:"Rosie Mavinho Banda",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Chifunde",bruto:10669.52,nib:"18978535110001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"157861808",inss_nr:"920903588",activo:true},
+{nr:12,nome:"Lufinesse Ruben Flaquessone",cargo:"Paralegal",grupo:"MTS",distrito:"Chifunde",bruto:22047.62,nib:"19953705210001",banco:"BCI",dias:30,irps:129.76,deps:1,nuit:"159920267",inss_nr:"921450827",activo:true},
+{nr:13,nome:"Luis Tinga Rungo",cargo:"Conselheiro(a) Leigo(a) Reclusos",grupo:"Reclusos",distrito:"Changara",bruto:10669.52,nib:"23231015110001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"172151566",inss_nr:"905668312",activo:true},
+{nr:14,nome:"Dimissone Gervásio Maciano",cargo:"Supervisor Distrital",grupo:"MTS",distrito:"Angonia",bruto:38638.1,nib:"4836429810001",banco:"BCI",dias:30,irps:2852.62,deps:3,nuit:"100484048",inss_nr:"905643658",activo:true},
+{nr:15,nome:"Herminio Renda Jorge Augusto",cargo:"Supervisor Distrital",grupo:"MTS",distrito:"Cahora Bassa",bruto:38638.1,nib:"168835873",banco:"BCI",dias:30,irps:2902.62,deps:1,nuit:"",inss_nr:"",activo:true},
+{nr:16,nome:"Danubio Antonio Domingos",cargo:"Paralegal",grupo:"MTS",distrito:"Angonia",bruto:22047.62,nib:"21221708610001",banco:"BCI",dias:30,irps:129.76,deps:1,nuit:"129015292",inss_nr:"921330766",activo:true},
+{nr:17,nome:"Amauro de Luis Magaio",cargo:"Paralegal",grupo:"MTS",distrito:"Angonia",bruto:22047.62,nib:"927473455",banco:"BCI",dias:30,irps:129.76,deps:1,nuit:"",inss_nr:"",activo:true},
+{nr:18,nome:"Cristina André Wadissone",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Angonia",bruto:10669.52,nib:"17539375210001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"102833392",inss_nr:"905647833",activo:true},
+{nr:19,nome:"Patricia Fabião Eressone",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Angonia",bruto:10669.52,nib:"19647408310001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"122838521",inss_nr:"905644164",activo:true},
+{nr:20,nome:"Manecas Francisco Xavier Jamal",cargo:"Supervisor Distrital",grupo:"MTS",distrito:"Mutarara",bruto:38638.1,nib:"9680212110001",banco:"BCI",dias:30,irps:2852.62,deps:3,nuit:"104659713",inss_nr:"920182245",activo:true},
+{nr:21,nome:"Lurdes Costa Nhampeza",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Mutarara",bruto:10669.52,nib:"10463477410001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"131763247",inss_nr:"920902796",activo:true},
+{nr:22,nome:"Rosita Evaristo Blaidone",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Cahora Bassa",bruto:10669.52,nib:"976.302.101.000.01",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"108775947",inss_nr:"920887831",activo:true},
+{nr:23,nome:"Sergio Fernando",cargo:"Paralegal",grupo:"MTS",distrito:"Cahora Bassa",bruto:22047.62,nib:"14289952810001",banco:"BCI",dias:30,irps:129.76,deps:1,nuit:"921284711",inss_nr:"144919602",activo:true},
+{nr:24,nome:"Romeo de Sousa",cargo:"HSH Paralegal",grupo:"HSH",distrito:"Tete",bruto:22047.62,nib:"000800005581236210195",banco:"BCI",dias:30,irps:179.76,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:25,nome:"Abel Jussulo L. Karim",cargo:"Supervisor Distrital",grupo:"HSH e TG",distrito:"Tete ",bruto:3863.81,nib:"000800002844033610113",banco:"BCI",dias:3,irps:0.0,deps:1,nuit:"",inss_nr:"",activo:true},
+{nr:26,nome:"Euclides Joao B. Maque",cargo:"Conselheiro(a) Leigo(a) Reclusos",grupo:"Reclusos",distrito:"Angonia",bruto:10669.52,nib:"000800000963417010113",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:27,nome:"Amadeu Samson Timu",cargo:"Conselheiro(a) Leigo(a) Reclusos",grupo:"Reclusos",distrito:"Angonia",bruto:10669.52,nib:"4188528010001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:28,nome:"Celso Kumbucani",cargo:"Conselheiro(a) Leigo(a) Reclusos",grupo:"Reclusos",distrito:"Tete",bruto:10669.52,nib:"000800009846512110113",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:29,nome:"Delma Emilio Dos Santos",cargo:"Conselheiro(a) Leigo(a)",grupo:"MTS",distrito:"Moatize",bruto:10669.52,nib:"000800009708665410113",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:30,nome:"Filomena  Titos Uamusse",cargo:"Conselheiro(a) Leigo(a) Reclusos",grupo:"Reclusos",distrito:"Tete",bruto:10669.52,nib:"000800009011874010195",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:31,nome:"Tiago Jaime Ronsolo",cargo:"Director Executivo",grupo:"Staff",distrito:"Sede",bruto:15000.0,nib:"4255399810002",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"102889381",inss_nr:"906594059",activo:true},
+{nr:32,nome:"Albertino Atanasio",cargo:"Gestor Programatico",grupo:"Staff",distrito:"Sede",bruto:12000.0,nib:"5524111310001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"103975527",inss_nr:"906612090",activo:true},
+{nr:33,nome:"Daniel Filipe Domingos",cargo:"Gestor de Admin & Fin. ",grupo:"Staff",distrito:"Sede",bruto:10000.0,nib:"4457945510001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:34,nome:"Rodrigues Alexandre Tiago",cargo:"Oficial de Finanças",grupo:"Staff",distrito:"Tete",bruto:79490.0,nib:"6585116710001",banco:"BCI",dias:30,irps:11985.0,deps:2,nuit:"106810230",inss_nr:"907412201",activo:true},
+{nr:35,nome:"Lucia Castigo",cargo:"Serevente",grupo:"Staff",distrito:"Tete",bruto:15000.0,nib:"16016232710001",banco:"BCI",dias:30,irps:0.0,deps:3,nuit:"119645492",inss_nr:"906649905",activo:true},
+{nr:36,nome:"Dorca Celestino Sebastiao Macasse",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"17779304710001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:37,nome:"Bernadete Marizane Coutinho",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"15901278010001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:38,nome:"Leda Luis",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"21263059710001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:39,nome:"Madalena Albertino Buleza  Sande",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"426293855",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:40,nome:"Chioneso Chimudza Temba",cargo:"Educadora de pare",grupo:"MTS",distrito:"Moatize",bruto:8165.71,nib:"14871273810001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:41,nome:"Tambudzai Chinyowa",cargo:"Educadora de pare",grupo:"MTS",distrito:"Moatize",bruto:8165.71,nib:"2049155181008",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:42,nome:"Tambudzai  Sajeni",cargo:"Educadora de pare",grupo:"MTS",distrito:"Moatize",bruto:8165.71,nib:"22143247410001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:43,nome:"Flora Francisco Fulucane",cargo:"Educadora de pare",grupo:"MTS",distrito:"Moatize",bruto:8165.71,nib:"19565569410001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:44,nome:"Ana Maria Jone Joaquim Carvalho",cargo:"Educadora de pare",grupo:"MTS",distrito:"Moatize",bruto:8165.71,nib:"19587365310001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:45,nome:"Runbidzai Chapendama",cargo:"Educadora de pare",grupo:"MTS",distrito:"Moatize",bruto:8165.71,nib:"19621955510001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:46,nome:"Ines  da Conceiçao Abrahamo Rabuco",cargo:"Educadora de pare",grupo:"MTS",distrito:"Chifunde",bruto:8165.71,nib:"19801143610001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:47,nome:"Rita Agustinho Saidone",cargo:"Educadora de pare",grupo:"MTS",distrito:"Chifunde",bruto:8165.71,nib:"22214212610001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:48,nome:"Belita Daniel  Salipano",cargo:"Educadora de pare",grupo:"MTS",distrito:"Chifunde",bruto:8165.71,nib:"22214329010001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:49,nome:"Esperança Emiliano Ganizane",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"22082748510001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:50,nome:"Isolda Mria Simão Daniel",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"250076283",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:51,nome:"Beatriz Inaci Basilio",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"20547481010001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:52,nome:"Alice Jassitone Milissone",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"18827506110001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:53,nome:"Ainessi Luis John KathunkuNva",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"22080643610001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:54,nome:"Rosa Pedro Gabriel",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"22082564210001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:55,nome:"Teodosia Elias Chapotela",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"22082447810001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:56,nome:"Catia José Guisado",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"13228675810001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:57,nome:"Chila Lucio Fernando",cargo:"Educadora de pare",grupo:"MTS",distrito:"Angonia",bruto:8165.71,nib:"22082894010001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:58,nome:"Cheila Jaime André Massanca",cargo:"Educadora de pare",grupo:"MTS",distrito:"Mutarara",bruto:8165.71,nib:"15533609210001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:59,nome:"Eva Arlindo Manuel",cargo:"Educadora de pare",grupo:"MTS",distrito:"Mutarara",bruto:8165.71,nib:"21276959810001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:60,nome:"Taima Jaime André",cargo:"Educadora de pare",grupo:"MTS",distrito:"Mutarara",bruto:8165.71,nib:"19024678010001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:61,nome:"Zainaba Joao Escova",cargo:"Educadora de pare",grupo:"MTS",distrito:"Cahora Bassa",bruto:8165.71,nib:"247669616",banco:"BIM",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:62,nome:"Leonilde Macario Jose Dias",cargo:"Educadora de pare",grupo:"MTS",distrito:"Cahora Bassa",bruto:8165.71,nib:"188.136.351.100.01",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:63,nome:"Berta Frank Bene Vergonha",cargo:"Educadora de pare",grupo:"MTS",distrito:"Cahora Bassa",bruto:8165.71,nib:"102.237.128.100.01",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:64,nome:"Sonia Paulo Maquina",cargo:"Educadora de pare",grupo:"MTS",distrito:"Cahora Bassa",bruto:8165.71,nib:"172.080.814.101.95",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:65,nome:"Guida Mateus Vurande",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"29400535210001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:66,nome:"Teresa José Paulo",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"22274663010001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:67,nome:"Cacilda Carlos  Samuel",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"387912992",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:68,nome:"Caronilda Horacio Jose",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"29416452910001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:69,nome:"Lucia Alberto Taude",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"29364228110001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:70,nome:"Aguida Isaac Machatine",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"29407131210001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:71,nome:"Nurate Baltazar Camaca",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"29419343510001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:72,nome:"Graca Sebastiao Feijao",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"29417820610001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:73,nome:"Florencia Victor Assado",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"9144180410001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:74,nome:"Cecília Daniel dos Santos",cargo:"Educadora de pare",grupo:"MTS",distrito:"Mutarara",bruto:8165.71,nib:"23566159810001",banco:"BCI",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true},
+{nr:75,nome:"Nocasse Francisco Lucas",cargo:"Educadora de pare",grupo:"MTS",distrito:"Tete",bruto:8165.71,nib:"000302040882752100862",banco:"standard bank",dias:30,irps:0.0,deps:0,nuit:"",inss_nr:"",activo:true}
+];
+const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro','13º Mês'];
+
+let currentUser=null, folhaColabs=[], pvData={};
+
+function r2(n){return Math.round((n||0)*100)/100;}
+function fmt(n){if(!n&&n!==0)return '—';return Number(n).toLocaleString('pt-MZ',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function setLoad(on){document.getElementById('loadOv').classList.toggle('active',on);}
+function toast(msg,type){
+  const t=document.createElement('div');t.className='toast '+(type||'info');t.textContent=msg;
+  document.getElementById('toasts').appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+
+async function nq(sql,params){
+  try{
+    const r=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sql,params:params||[]})});
+    if(!r.ok)return null;
+    return (await r.json()).rows||[];
+  }catch(e){return null;}
+}
+
+async function loadData(){
+  setLoad(true);
+  const mes=parseInt(document.getElementById('selMes').value);
+  const ano=parseInt(document.getElementById('selAno').value);
+  // Try from folha_salario table
+  const rows=await nq('SELECT * FROM folha_salario WHERE mes=$1 AND ano=$2 AND activo=true ORDER BY nr ASC',[mes,ano]);
+  if(rows&&rows.length>0){
+    folhaColabs=rows.map(r=>(({
+      key:r.colab_key,nr:r.nr,nome:r.nome,cargo:r.cargo,grupo:r.grupo,
+      distrito:r.distrito,bruto:parseFloat(r.bruto)||0,nib:r.nib||'',banco:r.banco||'BCI',
+      dias:r.dias||30,irps:parseFloat(r.irps)||0,deps:r.deps||0,
+      nuit:r.nuit||'',inss_nr:r.inss_nr||'',activo:true
+    })));
+  }else{
+    // Fallback to Excel data for January 2026
+    folhaColabs=COLABS_JAN2026.map(c=>(({...c,key:'jan_'+c.nr,activo:true})));
+  }
+  // Load pv data for NIB/bank info
+  const pvRows=await nq('SELECT colaborador_id,conta_bancaria,banco,num_inss,nuit FROM prova_vida WHERE activo=true',[]);
+  pvData={};
+  if(pvRows)pvRows.forEach(r=>{pvData['c_'+r.colaborador_id]=r;});
+  setLoad(false);
+  renderRecibos();
+}
+
+function calcIRPS(bruto,deps){
+  const G=18750,ded=bruto-G;
+  if(ded<=0)return 0;
+  let d=0;
+  if(deps===0)d=150;else if(deps===1)d=200;else if(deps===2)d=225;else if(deps===3)d=250;else d=300;
+  let irps=0;
+  if(ded<=3500)irps=ded*0.10;
+  else if(ded<=14000)irps=ded*0.15-175;
+  else if(ded<=42000)irps=ded*0.20-875;
+  else if(ded<=126000)irps=ded*0.25-2975;
+  else irps=ded*0.32-11795;
+  return Math.max(0,r2(irps-d));
+}
+
+function buildCanhao(c,mes,ano,nr,depRH){
+  const br=c.bruto||0;
+  const inss3=r2(br*0.03);
+  const inss4=r2(br*0.04);
+  const irps=c.irps||0;
+  const totDesc=r2(inss3+irps);
+  const liq=r2(br-totDesc);
+  const mesNome=MESES[mes]||'13º Mês';
+  const hoje=new Date().toLocaleDateString('pt-MZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const nrRecibo='REC/'+ano+'/'+String(mes).padStart(2,'0')+'/'+String(nr).padStart(3,'0');
+  // Cumulative from Jan to this month
+  const cumInss3=r2(inss3*mes);
+  const cumIrps=r2(irps*mes);
+  // NIB from folha or pv
+  const nib=c.nib||'—';
+  const banco=c.banco||'BCI';
+  const nuit=c.nuit||'—';
+  const inssNr=c.inss_nr||'—';
+
+  return `<div class="canhao">
+  <div class="rec-title-area">
+    <h2>ANDA</h2>
+    <div style="font-size:9pt;font-weight:700;color:#334155;margin-top:1px;">RECIBO DE SALÁRIO — ${mesNome.toUpperCase()} DE ${ano}</div>
+    <div class="proj" style="font-size:7.5pt;color:#64748b;">PROJECTO/DOADOR: VIVA+ / FUNDO GLOBAL</div>
+  </div>
+
+  <div class="rec-info-grid">
+    <div class="cell" style="grid-column:span 1;">
+      <span class="cell-lbl">Nome do Colaborador</span>
+      <span class="cell-val">${c.nome}</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Nº do Contribuinte (NUIT)</span>
+      <span class="cell-val">${nuit}</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Nº do Beneficiário (INSS)</span>
+      <span class="cell-val">${inssNr}</span>
+    </div>
+  </div>
+
+  <div class="rec-info-4">
+    <div class="cell">
+      <span class="cell-lbl">Categoria</span>
+      <span class="cell-val">${c.cargo}</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Departamento</span>
+      <span class="cell-val">${c.grupo||'—'}</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Nº de Dias Trabalhados</span>
+      <span class="cell-val">${c.dias_efectivos||c.dias||30}</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Data</span>
+      <span class="cell-val">${hoje}</span>
+    </div>
+  </div>
+
+  <div class="rec-payment-row">
+    <div class="cell">
+      <span class="cell-lbl">Modo de Pagamento</span>
+      <span class="cell-val">TRANSFERÊNCIA</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Banco</span>
+      <span class="cell-val">${banco}</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Conta Bancária: NIB</span>
+      <span class="cell-val" style="font-size:8pt;">${nib}</span>
+    </div>
+    <div class="cell">
+      <span class="cell-lbl">Nr. de Recibo</span>
+      <span class="cell-val" style="font-size:8pt;">${nrRecibo}</span>
+    </div>
+  </div>
+
+  <div class="rec-tables">
+    <div>
+      <table class="rec-tbl">
+        <thead><tr><th>ABONOS — DESIGNAÇÃO</th><th>MZN</th></tr></thead>
+        <tbody>
+          <tr><td>Salário</td><td></td></tr>
+          <tr><td>ORDENADO BASE</td><td>${fmt(br)}</td></tr>
+          <tr><td style="height:16px;"></td><td></td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td>TOTAL DE ABONOS</td><td>${fmt(br)}</td></tr>
+          <tr><td style="font-size:7.5pt;color:#64748b;">INSS 4% (encargo patronal)</td><td style="color:#64748b;font-size:8pt;">${fmt(inss4)}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <div>
+      <table class="rec-tbl">
+        <thead><tr><th>DESCONTOS — DESIGNAÇÃO</th><th>VALOR</th></tr></thead>
+        <tbody>
+          <tr><td>IRPS</td><td style="color:#b91c1c;">${fmt(irps)}</td></tr>
+          <tr><td>INSS 3%</td><td>${fmt(inss3)}</td></tr>
+          <tr><td style="height:16px;"></td><td></td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td>TOTAL DE DESCONTOS</td><td style="color:#b91c1c;">${fmt(totDesc)}</td></tr>
+          <tr><td style="height:18px;"></td><td></td></tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="rec-liquido">
+    <span class="lbl">TOTAL LÍQUIDO A RECEBER</span>
+    <span class="val">${fmt(liq)} MZN</span>
+  </div>
+
+  <div class="rec-acum">
+    <div class="rec-acum-hdr">INFORMAÇÃO SOBRE ACUMULADOS (Janeiro — ${mesNome})</div>
+    <div class="rec-acum-body">
+      <div class="rec-acum-cell">
+        <span class="rec-acum-lbl">Vencimento Acumulado</span>
+        <span class="rec-acum-val">${fmt(r2(br*mes))} MZN</span>
+      </div>
+      <div class="rec-acum-cell">
+        <span class="rec-acum-lbl">IRPS Acumulado</span>
+        <span class="rec-acum-val">${fmt(cumIrps)} MZN</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="rec-sigs">
+    <div class="rec-sig">
+      <div class="sig-line"></div>
+      <div class="sig-lbl">Assinatura do/a Colaborador/a</div>
+      <div class="sig-name">${c.nome}</div>
+    </div>
+    <div class="rec-sig">
+      <div class="sig-line"></div>
+      <div class="sig-lbl">Dep. Recursos Humanos / Admin &amp; Finanças</div>
+      <div class="sig-name">${depRH||'—'}</div>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderRecibos(){
+  const mes=parseInt(document.getElementById('selMes').value);
+  const ano=parseInt(document.getElementById('selAno').value);
+  const distF=document.getElementById('fDist').value;
+  const grupoF=document.getElementById('fGrupo').value;
+  const depRH=document.getElementById('inpDepRH').value.trim();
+  let vis=folhaColabs.filter(c=>c.activo);
+  if(distF)vis=vis.filter(c=>c.distrito===distF);
+  if(grupoF)vis=vis.filter(c=>c.grupo===grupoF);
+
+  document.getElementById('countLbl').textContent=vis.length+' recibo'+(vis.length!==1?'s':'')+' — '+( MESES[mes]||'13º Mês')+' '+ano;
+
+  if(!vis.length){
+    document.getElementById('recibosGrid').innerHTML='<div style="text-align:center;padding:60px;color:#94a3b8;"><div style="font-size:40px;margin-bottom:12px;">🧾</div><p>Nenhum colaborador encontrado.</p></div>';
+    return;
+  }
+
+  let html='';
+  // Each A4 page = 1 collaborator with 2 identical canhões (duplicate)
+  vis.forEach((c,i)=>{
+    const canhao=buildCanhao(c,mes,ano,i+1,depRH);
+    html+=`<div class="page-wrap">${canhao}${canhao}</div>`;
+  });
+  document.getElementById('recibosGrid').innerHTML=html;
+}
+
+function doLogout(){if(!confirm('Terminar sessão?'))return;sessionStorage.removeItem('anda_user');location.href='index.html';}
+
+window.addEventListener('DOMContentLoaded',function(){
+  const saved=sessionStorage.getItem('anda_user');
+  if(!saved){location.href='index.html';return;}
+  try{
+    currentUser=JSON.parse(saved);
+    document.getElementById('badgeNome').textContent=currentUser.nome;
+    const rl={admin:'Administrador',gestor:'Gestor',viewer:'Visualizador'}[currentUser.role]||currentUser.role;
+    document.getElementById('badgeRole').textContent=rl+(currentUser.distrito?' · '+currentUser.distrito:'');
+  }catch(e){location.href='index.html';return;}
+  const now=new Date();
+  document.getElementById('selMes').value=now.getMonth()+1;
+  document.getElementById('selAno').value=now.getFullYear();
+  loadData();
+});
+</script>
+</body>
+</html>
