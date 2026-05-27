@@ -1,0 +1,2397 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ANDA · Plano de Férias & Gestão de Faltas</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#0f1f3d;--blue:#1d4ed8;--teal:#0f766e;--violet:#7c3aed;
+  --green:#16a34a;--amber:#d97706;--red:#dc2626;--slate:#64748b;
+  --border:#e2e8f0;--bg:#f8fafc;--white:#ffffff;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:#1e293b;font-size:13px;}
+button{font-family:var(--font);cursor:pointer;}
+/* ── Topbar ───────────────────────────────────────────────────────────── */
+.topbar{background:linear-gradient(135deg,#0a1628,#1a3a6c);color:white;
+  padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.3);}
+.topbar-logo{height:34px;object-fit:contain;}
+.topbar-title{flex:1;}
+.topbar-title h1{font-size:14px;font-weight:700;letter-spacing:-.2px;}
+.topbar-title p{font-size:10px;opacity:.7;margin-top:1px;}
+.topbar-user{background:rgba(255,255,255,.12);border-radius:8px;padding:6px 12px;font-size:11px;text-align:right;}
+.topbar-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:white;
+  border-radius:7px;padding:5px 12px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;}
+.topbar-btn:hover{background:rgba(255,255,255,.25);}
+/* ── Layout ───────────────────────────────────────────────────────────── */
+.shell{display:grid;grid-template-columns:260px 1fr;height:calc(100vh - 52px);}
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+.sidebar{background:white;border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar-section{padding:12px 14px 6px;font-size:10px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.6px;}
+.sidebar-btn{display:flex;align-items:center;gap:9px;padding:8px 14px;font-size:12px;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:.12s;}
+.sidebar-btn:hover{background:#f0f9ff;color:var(--blue);}
+.sidebar-btn.active{background:#eff6ff;color:var(--blue);font-weight:700;border-right:3px solid var(--blue);}
+.sidebar-btn i{font-size:16px;flex-shrink:0;}
+.sidebar-badge{margin-left:auto;background:#fee2e2;color:#dc2626;border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700;}
+.sidebar-badge.amber{background:#fef3c7;color:#92400e;}
+.sidebar-badge.green{background:#dcfce7;color:#15803d;}
+.sidebar-divider{border:none;border-top:1px solid var(--border);margin:4px 14px;}
+/* ── Main content ─────────────────────────────────────────────────────── */
+.main{overflow-y:auto;background:var(--bg);}
+.page{display:none;padding:20px;}
+.page.active{display:block;}
+/* ── KPI Cards ────────────────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.kpi-card{background:white;border-radius:12px;padding:14px 16px;border:1px solid var(--border);}
+.kpi-card .k-num{font-size:30px;font-weight:800;line-height:1;}
+.kpi-card .k-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;}
+.kpi-card .k-sub{font-size:10px;color:var(--slate);margin-top:2px;}
+.kpi-card .k-bar{height:4px;border-radius:2px;margin-top:8px;background:#e2e8f0;}
+.kpi-card .k-fill{height:100%;border-radius:2px;transition:.5s;}
+.kc-blue  .k-num{color:var(--blue);}  .kc-blue .k-fill{background:var(--blue);}
+.kc-green .k-num{color:var(--green);} .kc-green .k-fill{background:var(--green);}
+.kc-amber .k-num{color:var(--amber);} .kc-amber .k-fill{background:var(--amber);}
+.kc-red   .k-num{color:var(--red);}   .kc-red .k-fill{background:var(--red);}
+.kc-violet.k-num{color:var(--violet);}.kc-violet .k-fill{background:var(--violet);}
+/* ── Section header ───────────────────────────────────────────────────── */
+.sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.sec-hdr h2{font-size:15px;font-weight:700;color:var(--navy);}
+.sec-hdr-actions{margin-left:auto;display:flex;gap:8px;}
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.btn{padding:7px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;background:white;color:#374151;transition:.12s;}
+.btn:hover{background:#f0f9ff;border-color:var(--blue);color:var(--blue);}
+.btn-primary{background:var(--blue);color:white;border-color:var(--blue);}
+.btn-primary:hover{background:#1e40af;color:white;}
+.btn-success{background:var(--green);color:white;border-color:var(--green);}
+.btn-success:hover{background:#15803d;color:white;}
+.btn-danger{background:var(--red);color:white;border-color:var(--red);}
+.btn-amber{background:var(--amber);color:white;border-color:var(--amber);}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px;}
+/* ── Table ────────────────────────────────────────────────────────────── */
+.tbl-wrap{background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl thead th{background:var(--navy);color:white;padding:8px 12px;text-align:left;font-size:10px;font-weight:700;white-space:nowrap;}
+.tbl tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.tbl tbody tr:hover td{background:#f8faff;}
+.tbl tbody tr:last-child td{border-bottom:none;}
+/* ── Status badges ────────────────────────────────────────────────────── */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;}
+.b-aprovado{background:#dcfce7;color:#15803d;}
+.b-pendente{background:#fef3c7;color:#92400e;}
+.b-rejeitado{background:#fee2e2;color:#b91c1c;}
+.b-cancelado{background:#f1f5f9;color:#475569;}
+.b-critico{background:#fee2e2;color:#dc2626;}
+.b-alto{background:#fef3c7;color:#92400e;}
+.b-ok{background:#dcfce7;color:#15803d;}
+.b-ferias{background:#dbeafe;color:#1e40af;}
+.b-licenca{background:#f3e8ff;color:#7c3aed;}
+.b-suspensao{background:#fee2e2;color:#b91c1c;}
+/* ── Filter bar ───────────────────────────────────────────────────────── */
+.filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.filter-inp{padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);outline:none;min-width:180px;}
+.filter-inp:focus{border-color:var(--blue);}
+.filter-sel{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);outline:none;background:white;}
+/* ── Calendar ─────────────────────────────────────────────────────────── */
+.cal-wrap{background:white;border-radius:12px;border:1px solid var(--border);padding:16px;}
+.cal-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.cal-title{font-size:14px;font-weight:700;color:var(--navy);flex:1;text-align:center;}
+.cal-nav-btn{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-dow{text-align:center;font-size:10px;font-weight:700;color:var(--slate);padding:4px 0;text-transform:uppercase;}
+.cal-day{min-height:42px;border-radius:8px;border:1px solid #f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:500;cursor:pointer;position:relative;transition:.12s;}
+.cal-day:hover{border-color:var(--blue);background:#eff6ff;}
+.cal-day.empty{border:none;cursor:default;}
+.cal-day.today{box-shadow:0 0 0 2px var(--blue);}
+.cal-day.weekend{background:#f8fafc;color:#94a3b8;}
+.cal-day.ferias{background:#dbeafe;color:#1e40af;border-color:#93c5fd;font-weight:700;}
+.cal-day.falta-nj{background:#fee2e2;color:#dc2626;border-color:#fca5a5;}
+.cal-day.falta-j{background:#fef3c7;color:#92400e;border-color:#fde047;}
+.cal-day.licenca{background:#f3e8ff;color:#7c3aed;border-color:#d8b4fe;}
+.cal-day.suspensao{background:#fef2f2;color:#b91c1c;border-color:#fecaca;}
+.cal-day.feriado{background:#f0fdf4;color:#15803d;border-color:#86efac;}
+.cal-day .cal-dot{width:4px;height:4px;border-radius:50%;margin-top:2px;}
+.cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:10px;}
+.cal-legend-item{display:flex;align-items:center;gap:4px;}
+.cal-legend-swatch{width:12px;height:12px;border-radius:3px;}
+/* ── Tabs inside pages ────────────────────────────────────────────────── */
+.tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px;}
+.tab-btn{padding:9px 16px;font-size:12px;font-weight:600;color:var(--slate);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-2px;transition:.15s;}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+/* ── Modal ────────────────────────────────────────────────────────────── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(15,31,61,.55);z-index:500;align-items:center;justify-content:center;padding:16px;}
+.modal-bg.active{display:flex;}
+.modal-box{background:white;border-radius:14px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 80px rgba(15,31,61,.3);}
+.modal-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.modal-hdr h3{font-size:14px;font-weight:700;flex:1;}
+.modal-close{background:none;border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:11px;}
+.modal-body{padding:16px 20px;}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+/* ── Form grid ────────────────────────────────────────────────────────── */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.fgrid.full{grid-template-columns:1fr;}
+.fgrid.tri{grid-template-columns:1fr 1fr 1fr;}
+.flabel{font-size:10px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;}
+.finp,.fsel{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:var(--font);outline:none;}
+.finp:focus,.fsel:focus{border-color:var(--blue);}
+/* ── Saldo card large ─────────────────────────────────────────────────── */
+.saldo-big{background:linear-gradient(135deg,var(--navy),#1a3a6c);color:white;border-radius:12px;padding:16px 20px;margin-bottom:14px;}
+.saldo-big .sb-num{font-size:48px;font-weight:900;line-height:1;}
+.saldo-big .sb-lbl{font-size:11px;opacity:.8;margin-top:2px;}
+.saldo-big .sb-row{display:flex;gap:20px;margin-top:12px;}
+.saldo-big .sb-item{font-size:11px;}
+.saldo-big .sb-item strong{display:block;font-size:18px;font-weight:800;}
+/* ── Alert box ────────────────────────────────────────────────────────── */
+.alert{border-radius:8px;padding:10px 14px;font-size:11px;display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;}
+.alert-icon{font-size:16px;flex-shrink:0;}
+.alert.critico{background:#fee2e2;border:1px solid #fca5a5;color:#b91c1c;}
+.alert.alto{background:#fef3c7;border:1px solid #fde047;color:#92400e;}
+.alert.info{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;}
+.alert.success{background:#f0fdf4;border:1px solid #86efac;color:#15803d;}
+/* ── Detail row ───────────────────────────────────────────────────────── */
+.detail-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f8fafc;font-size:12px;}
+.detail-row:last-child{border:none;}
+.dr-lbl{color:var(--slate);}
+.dr-val{font-weight:600;}
+/* ── Progress bar ─────────────────────────────────────────────────────── */
+.prog-bar{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:4px;}
+.prog-fill{height:100%;border-radius:4px;transition:.5s;}
+/* ── Risk ring ────────────────────────────────────────────────────────── */
+.risk-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:10px;font-weight:700;}
+.risk-ok{background:#dcfce7;color:#15803d;}
+.risk-medio{background:#fef3c7;color:#92400e;}
+.risk-alto{background:#fee2e2;color:#dc2626;}
+.risk-critico{background:#7f1d1d;color:white;}
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media(max-width:768px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{display:none;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+}
+/* ── Print ────────────────────────────────────────────────────────────── */
+@media print{.topbar,.sidebar,.filter-bar,.btn,.modal-bg{display:none!important;}}
+/* ── Loading ──────────────────────────────────────────────────────────── */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.loading-overlay.active{display:flex;}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* ── Toasts ───────────────────────────────────────────────────────────── */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;}
+.toast-msg{background:#1e293b;color:white;padding:9px 14px;border-radius:8px;font-size:12px;font-weight:600;
+  animation:fadeIn .2s;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.toast-msg.success{background:#15803d;}
+.toast-msg.error{background:#dc2626;}
+.toast-msg.warn{background:#d97706;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── MAPA DE FÉRIAS ────────────────────────────────────────────────── */
+.mapa-wrap{overflow-x:auto;background:white;border-radius:12px;border:1px solid var(--border);}
+.mapa-table{border-collapse:collapse;font-size:11px;min-width:1200px;}
+.mapa-table th,.mapa-table td{border:1px solid #e2e8f0;white-space:nowrap;}
+/* Header rows */
+.mapa-th-nome{background:var(--navy);color:white;padding:7px 12px;text-align:left;font-size:10px;font-weight:700;position:sticky;left:0;z-index:10;min-width:180px;}
+.mapa-th-dist{background:#1a3a6c;color:white;padding:5px 8px;text-align:left;font-size:9px;position:sticky;left:0;z-index:10;}
+.mapa-th-mes{background:#1d4ed8;color:white;padding:5px 8px;text-align:center;font-size:10px;font-weight:700;}
+.mapa-th-dia{background:#2563ab;color:white;padding:4px 3px;text-align:center;font-size:9px;font-weight:600;min-width:22px;}
+.mapa-th-dia.weekend{background:#374151;}
+.mapa-th-dia.feriado{background:#0f766e;}
+/* Name cell */
+.mapa-nome-cell{background:white;position:sticky;left:0;z-index:5;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;border-right:2px solid #e2e8f0;min-width:180px;}
+.mapa-nome-cell:hover{background:#eff6ff;color:var(--blue);}
+.mapa-dist-cell{background:#f8fafc;position:sticky;left:0;z-index:5;padding:3px 8px;font-size:9px;color:var(--slate);border-right:2px solid #e2e8f0;}
+/* Day cells */
+.mapa-day{padding:2px;text-align:center;min-width:22px;height:24px;font-size:9px;font-weight:700;transition:.1s;}
+.mapa-day:hover{filter:brightness(.9);cursor:pointer;}
+.mapa-day.presente{background:#dcfce7;color:#15803d;}
+.mapa-day.ferias{background:#bfdbfe;color:#1e40af;}
+.mapa-day.falta-nj{background:#fecaca;color:#dc2626;}
+.mapa-day.falta-j{background:#fef3c7;color:#b45309;}
+.mapa-day.licenca{background:#e9d5ff;color:#7c3aed;}
+.mapa-day.suspensao{background:#fee2e2;color:#b91c1c;}
+.mapa-day.mp{background:#fbcfe8;color:#be185d;}
+.mapa-day.weekend{background:#f1f5f9;color:#cbd5e1;}
+.mapa-day.feriado{background:#d1fae5;color:#065f46;}
+.mapa-day.empty{background:#f8fafc;}
+/* Month separator */
+.mapa-mes-sep{border-left:2px solid var(--navy)!important;}
+/* Legend */
+.mapa-legend{display:flex;gap:10px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--border);font-size:10px;}
+.mapa-legend-item{display:flex;align-items:center;gap:4px;}
+.mapa-legend-swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.1);}
+/* Group header */
+.mapa-grupo-hdr td{background:#1a3a6c;color:white;font-size:10px;font-weight:700;padding:4px 8px;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <img src="logo_anda.png" alt="ANDA" class="topbar-logo" onerror="this.style.display='none'">
+  <div class="topbar-title">
+    <h1>ANDA Ecossistema</h1>
+    <p>Plano de Férias & Gestão de Faltas</p>
+  </div>
+  <div id="topbarUser" class="topbar-user" style="display:none;"></div>
+  <button class="topbar-btn" onclick="navTo('index')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+  <button class="topbar-btn" onclick="navTo('efectividade')"><i class="ti ti-calendar-check"></i> Efectividade</button>
+</div>
+
+<!-- DB BANNER -->
+<div id="dbBanner" style="display:none;"></div>
+
+<!-- SHELL -->
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div style="padding:14px 14px 6px;">
+    <div class="filter-inp" style="width:100%;padding:8px 10px;font-size:11px;" id="sbSearch" oninput="filterSidebar()" placeholder="🔍 Filtrar colaborador..."></div>
+  </div>
+  <div class="sidebar-section">Visão Geral</div>
+  <button class="sidebar-btn active" onclick="showPage('dashboard')" id="sb-dashboard">
+    <i class="ti ti-chart-bar"></i> Dashboard
+  </button>
+  <button class="sidebar-btn" onclick="showPage('alertas')" id="sb-alertas">
+    <i class="ti ti-alert-triangle"></i> Alertas & Risco
+    <span class="sidebar-badge" id="sbAlertCount">0</span>
+  </button>
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">Férias</div>
+  <button class="sidebar-btn" onclick="showPage('plano-ferias')" id="sb-plano-ferias">
+    <i class="ti ti-beach"></i> Plano de Férias
+  </button>
+  <button class="sidebar-btn" onclick="showPage('calendario')" id="sb-calendario">
+    <i class="ti ti-calendar-month"></i> Calendário
+  </button>
+  <button class="sidebar-btn" onclick="showPage('mapa-ferias')" id="sb-mapa-ferias">
+    <i class="ti ti-layout-grid"></i> Mapa de Férias
+  </button>
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">Faltas</div>
+  <button class="sidebar-btn" onclick="showPage('faltas')" id="sb-faltas">
+    <i class="ti ti-circle-x"></i> Registo de Faltas
+  </button>
+  <button class="sidebar-btn" onclick="showPage('acumulados')" id="sb-acumulados">
+    <i class="ti ti-chart-line"></i> Acumulados Anuais
+  </button>
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">Colaboradores</div>
+  <div id="colabList" style="max-height:320px;overflow-y:auto;"></div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- ═══════════════ PAGE: DASHBOARD ═══════════════ -->
+<div class="page active" id="page-dashboard">
+  <div class="sec-hdr">
+    <div>
+      <h2><i class="ti ti-chart-bar" style="color:var(--blue);"></i> Dashboard — Visão Geral</h2>
+      <p style="font-size:11px;color:var(--slate);margin-top:2px;">Resumo de presenças, férias e faltas</p>
+    </div>
+    <div class="sec-hdr-actions">
+      <select class="filter-sel" id="dashDist" onchange="loadDashboard()">
+        <option value="">Todos os distritos</option>
+        <option>CIDADE DE TETE</option><option>MOATIZE</option><option>CHIFUNDE</option>
+        <option>ANGÓNIA</option><option>CAHORA-BASSA</option><option>MUTARARA</option>
+        <option>CHANGARA</option><option>TSANGANO</option><option>MACANGA</option>
+        <option>MARÁVIA</option><option>CHIUTA</option><option>ZUMBO</option>
+      </select>
+      <select class="filter-sel" id="dashMes" onchange="loadDashboard()">
+        <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+        <option value="3">Março</option><option value="4">Abril</option>
+        <option value="5">Maio</option><option value="6">Junho</option>
+        <option value="7">Julho</option><option value="8">Agosto</option>
+        <option value="9">Setembro</option><option value="10">Outubro</option>
+        <option value="11">Novembro</option><option value="12">Dezembro</option>
+      </select>
+      <select class="filter-sel" id="dashAno" onchange="loadDashboard()">
+        <option>2026</option><option>2025</option><option>2027</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="exportDashboardExcel()"><i class="ti ti-table-export"></i> Excel</button>
+    </div>
+  </div>
+  <div class="kpi-grid" id="dashKpis">
+    <div class="kpi-card kc-blue"><div class="k-num" id="kColabs">—</div><div class="k-lbl">Colaboradores</div><div class="k-sub">no período</div></div>
+    <div class="kpi-card kc-green"><div class="k-num" id="kFerias">—</div><div class="k-lbl">Em Férias</div><div class="k-sub">aprovadas este mês</div><div class="k-bar"><div class="k-fill" id="kFeriasBar" style="width:0%"></div></div></div>
+    <div class="kpi-card kc-amber"><div class="k-num" id="kFaltasNJ">—</div><div class="k-lbl">Faltas NJ</div><div class="k-sub">não justificadas</div><div class="k-bar"><div class="k-fill" id="kFaltasBar" style="width:0%"></div></div></div>
+    <div class="kpi-card kc-red"><div class="k-num" id="kRisco">—</div><div class="k-lbl">Em Risco</div><div class="k-sub">≥5 faltas NJ</div></div>
+  </div>
+  <div class="tbl-wrap">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+      <span style="font-size:12px;font-weight:700;">Resumo por Colaborador</span>
+      <input class="filter-inp" id="dashSearch" placeholder="Pesquisar..." oninput="filterDashTable()" style="margin-left:auto;width:200px;">
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="tbl" id="dashTable">
+        <thead><tr>
+          <th>#</th><th>Nome</th><th>Cargo</th><th>Distrito</th>
+          <th>Dias Trab.</th><th>Férias</th><th>Falta J</th><th>Falta NJ</th>
+          <th>Licença</th><th>Suspensão</th><th>Desconto Est.</th><th>Risco</th>
+        </tr></thead>
+        <tbody id="dashTableBody"><tr><td colspan="12" style="text-align:center;padding:20px;color:var(--slate);">A carregar...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE: ALERTAS ═══════════════ -->
+<div class="page" id="page-alertas">
+  <div class="sec-hdr">
+    <h2><i class="ti ti-alert-triangle" style="color:#dc2626;"></i> Alertas & Risco Disciplinar</h2>
+    <div class="sec-hdr-actions">
+      <select class="filter-sel" id="alertAno" onchange="loadAlertas()"><option>2026</option><option>2025</option></select>
+      <button class="btn btn-sm" onclick="loadAlertas()"><i class="ti ti-refresh"></i> Actualizar</button>
+    </div>
+  </div>
+  <div id="alertasList"></div>
+</div>
+
+<!-- ═══════════════ PAGE: PLANO FÉRIAS ═══════════════ -->
+<div class="page" id="page-plano-ferias">
+  <div class="sec-hdr">
+    <h2><i class="ti ti-beach" style="color:var(--blue);"></i> Plano de Férias</h2>
+    <div class="sec-hdr-actions">
+      <select class="filter-sel" id="pfDist" onchange="loadPlanoFerias()">
+        <option value="">Todos os distritos</option>
+        <option>CIDADE DE TETE</option><option>MOATIZE</option><option>CHIFUNDE</option>
+        <option>ANGÓNIA</option><option>CAHORA-BASSA</option><option>MUTARARA</option>
+      </select>
+      <select class="filter-sel" id="pfAno" onchange="loadPlanoFerias()"><option>2026</option><option>2025</option><option>2027</option></select>
+      <select class="filter-sel" id="pfEstado" onchange="loadPlanoFerias()">
+        <option value="">Todos estados</option>
+        <option value="pendente">Pendente</option>
+        <option value="aprovado">Aprovado</option>
+        <option value="rejeitado">Rejeitado</option>
+        <option value="cancelado">Cancelado</option>
+      </select>
+      <button class="btn btn-primary" onclick="openNovoPedido()"><i class="ti ti-plus"></i> Novo Pedido</button>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchPFTab('lista')">📋 Lista de Pedidos</button>
+    <button class="tab-btn" onclick="switchPFTab('saldos')">📊 Saldos por Colaborador</button>
+    <button class="tab-btn" onclick="switchPFTab('trimestre')">📅 Visão Trimestral</button>
+  </div>
+  <div class="tab-pane active" id="pf-lista">
+    <div class="tbl-wrap" id="pfListaWrap"></div>
+  </div>
+  <div class="tab-pane" id="pf-saldos">
+    <div class="tbl-wrap" id="pfSaldosWrap"></div>
+  </div>
+  <div class="tab-pane" id="pf-trimestre">
+    <div id="pfTrimestreWrap"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE: CALENDÁRIO ═══════════════ -->
+<div class="page" id="page-calendario">
+  <div class="sec-hdr">
+    <h2><i class="ti ti-calendar-month" style="color:var(--violet);"></i> Calendário de Férias & Faltas</h2>
+    <div class="sec-hdr-actions">
+      <select class="filter-sel" id="calDist" onchange="renderCalendario()">
+        <option value="">Todos os distritos</option>
+        <option>CIDADE DE TETE</option><option>MOATIZE</option><option>CHIFUNDE</option>
+        <option>ANGÓNIA</option><option>CAHORA-BASSA</option><option>MUTARARA</option>
+      </select>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <button class="cal-nav-btn" onclick="calNav(-1)">◀</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="cal-nav-btn" onclick="calNav(1)">▶</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#dbeafe;"></div> Férias</div>
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#fee2e2;"></div> Falta NJ</div>
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#fef3c7;"></div> Falta J</div>
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#f3e8ff;"></div> Licença</div>
+        <div class="cal-legend-item"><div class="cal-legend-swatch" style="background:#f0fdf4;"></div> Feriado</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:700;color:var(--slate);text-transform:uppercase;margin-bottom:8px;">Eventos do Mês</div>
+      <div id="calEventos" style="max-height:460px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE: MAPA FÉRIAS ═══════════════ -->
+<div class="page" id="page-mapa-ferias">
+  <div class="sec-hdr">
+    <h2><i class="ti ti-layout-grid" style="color:var(--violet);"></i> Mapa de Férias Anual</h2>
+    <div class="sec-hdr-actions">
+      <select class="filter-sel" id="mapaGrupo" onchange="renderMapaFerias()">
+        <option value="">Todos os grupos</option>
+        <option value="Staff">Staff</option>
+        <option value="MTS">MTS</option>
+        <option value="HSH">HSH</option>
+        <option value="Reclusos">Reclusos</option>
+      </select>
+      <select class="filter-sel" id="mapaDist" onchange="renderMapaFerias()">
+        <option value="">Todos os distritos</option>
+        <option>CIDADE DE TETE</option><option>MOATIZE</option><option>CHIFUNDE</option>
+        <option>ANGÓNIA</option><option>CAHORA-BASSA</option><option>MUTARARA</option>
+        <option>CHANGARA</option><option>TSANGANO</option><option>MACANGA</option>
+        <option>MARÁVIA</option><option>CHIUTA</option><option>ZUMBO</option>
+      </select>
+      <select class="filter-sel" id="mapaAno" onchange="renderMapaFerias()">
+        <option>2026</option><option>2025</option><option>2027</option>
+      </select>
+      <select class="filter-sel" id="mapaVista" onchange="renderMapaFerias()">
+        <option value="anual">Vista Anual</option>
+        <option value="mensal">Vista Mensal</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="exportMapaExcel()"><i class="ti ti-table-export"></i> Excel</button>
+      <button class="btn btn-sm" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+    </div>
+  </div>
+  <div style="margin-bottom:10px;font-size:11px;color:var(--slate);">
+    Clique no nome de um colaborador para editar o plano de férias. Clique numa célula para registar férias nesse dia.
+  </div>
+  <div class="mapa-wrap" id="mapaWrap">
+    <div style="text-align:center;padding:30px;color:var(--slate);">⏳ A gerar mapa...</div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE: FALTAS ═══════════════ -->
+<div class="page" id="page-faltas">
+  <div class="sec-hdr">
+    <h2><i class="ti ti-circle-x" style="color:var(--red);"></i> Registo de Faltas</h2>
+    <div class="sec-hdr-actions">
+      <select class="filter-sel" id="faltaDist" onchange="loadFaltas()">
+        <option value="">Todos os distritos</option>
+        <option>CIDADE DE TETE</option><option>MOATIZE</option><option>CHIFUNDE</option>
+        <option>ANGÓNIA</option><option>CAHORA-BASSA</option><option>MUTARARA</option>
+      </select>
+      <select class="filter-sel" id="faltaMes" onchange="loadFaltas()">
+        <option value="">Todo o ano</option>
+        <option value="1">Jan</option><option value="2">Fev</option>
+        <option value="3">Mar</option><option value="4">Abr</option>
+        <option value="5">Mai</option><option value="6">Jun</option>
+        <option value="7">Jul</option><option value="8">Ago</option>
+        <option value="9">Set</option><option value="10">Out</option>
+        <option value="11">Nov</option><option value="12">Dez</option>
+      </select>
+      <select class="filter-sel" id="faltaAno" onchange="loadFaltas()"><option>2026</option><option>2025</option></select>
+      <select class="filter-sel" id="faltaTipo" onchange="loadFaltas()">
+        <option value="">Todos os tipos</option>
+        <option value="nj">Não Justificadas</option>
+        <option value="j">Justificadas</option>
+        <option value="licenca">Licença S/Venc.</option>
+        <option value="suspensao">Suspensão</option>
+      </select>
+    </div>
+  </div>
+  <div class="kpi-grid" id="faltaKpis">
+    <div class="kpi-card kc-red"><div class="k-num" id="kFNJ">—</div><div class="k-lbl">Faltas NJ</div><div class="k-sub">não justificadas</div></div>
+    <div class="kpi-card kc-amber"><div class="k-num" id="kFJ">—</div><div class="k-lbl">Justificadas</div><div class="k-sub">com documento</div></div>
+    <div class="kpi-card kc-violet"><div class="k-num" id="kFLic">—</div><div class="k-lbl">Licenças</div><div class="k-sub">sem vencimento</div></div>
+    <div class="kpi-card kc-red"><div class="k-num" id="kFDesc">—</div><div class="k-lbl">Desconto Total</div><div class="k-sub">est. em MZN</div></div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchFaltaTab('geral')">📊 Resumo por Colaborador</button>
+    <button class="tab-btn" onclick="switchFaltaTab('lista')">📋 Lista Detalhada</button>
+  </div>
+  <div class="tab-pane active" id="falta-geral"><div class="tbl-wrap" id="faltaGeralWrap"></div></div>
+  <div class="tab-pane" id="falta-lista"><div class="tbl-wrap" id="faltaListaWrap"></div></div>
+</div>
+
+<!-- ═══════════════ PAGE: ACUMULADOS ═══════════════ -->
+<div class="page" id="page-acumulados">
+  <div class="sec-hdr">
+    <h2><i class="ti ti-chart-line" style="color:var(--teal);"></i> Acumulados Anuais</h2>
+    <div class="sec-hdr-actions">
+      <select class="filter-sel" id="acumDist" onchange="loadAcumulados()">
+        <option value="">Todos os distritos</option>
+        <option>CIDADE DE TETE</option><option>MOATIZE</option><option>CHIFUNDE</option>
+        <option>ANGÓNIA</option><option>CAHORA-BASSA</option><option>MUTARARA</option>
+      </select>
+      <select class="filter-sel" id="acumAno" onchange="loadAcumulados()"><option>2026</option><option>2025</option></select>
+      <button class="btn btn-sm" onclick="exportAcumExcel()"><i class="ti ti-table-export"></i> Excel</button>
+    </div>
+  </div>
+  <div class="tbl-wrap" id="acumWrap">
+    <div style="text-align:center;padding:30px;color:var(--slate);">Seleccione os filtros e aguarde.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE: COLABORADOR DETALHE ═══════════════ -->
+<div class="page" id="page-colab-detalhe">
+  <button class="btn btn-sm" onclick="showPage('dashboard')" style="margin-bottom:12px;"><i class="ti ti-arrow-left"></i> Voltar</button>
+  <div id="colabDetalheContent"></div>
+</div>
+
+</main>
+</div>
+
+<!-- ═══════════ MODAL: NOVO PEDIDO FÉRIAS ═══════════ -->
+<div class="modal-bg" id="modalNovoPedido">
+<div class="modal-box">
+  <div class="modal-hdr">
+    <h3>🏖️ Novo Pedido de Férias</h3>
+    <button class="modal-close" onclick="closeModal('modalNovoPedido')">✕</button>
+  </div>
+  <div class="modal-body">
+    <div id="novoPedidoSaldoBadge" style="margin-bottom:12px;"></div>
+    <div class="fgrid full">
+      <div>
+        <label class="flabel">Colaborador *</label>
+        <input class="finp" id="npColSearch" placeholder="Pesquisar colaborador..." oninput="filterNpCols()" autocomplete="off">
+        <div id="npColList" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;margin-top:4px;"></div>
+        <input type="hidden" id="npColId">
+        <input type="hidden" id="npColNome">
+      </div>
+    </div>
+    <div class="fgrid">
+      <div>
+        <label class="flabel">Data Início *</label>
+        <input type="date" class="finp" id="npIni" onchange="calcNpDias()">
+      </div>
+      <div>
+        <label class="flabel">Data Fim *</label>
+        <input type="date" class="finp" id="npFim" onchange="calcNpDias()">
+      </div>
+    </div>
+    <div id="npDiasBadge" style="background:#eff6ff;border-radius:7px;padding:8px 12px;font-size:12px;color:var(--blue);margin-bottom:10px;font-weight:600;">
+      📅 Seleccione as datas para calcular os dias úteis
+    </div>
+    <div class="fgrid">
+      <div>
+        <label class="flabel">Tipo</label>
+        <select class="fsel" id="npTipo">
+          <option value="ferias_anuais">Férias Anuais (30 dias)</option>
+          <option value="ferias_proporcional">Férias Proporcionais</option>
+          <option value="folga_compensatoria">Folga Compensatória</option>
+          <option value="licenca_sem_vencimento">Licença S/ Vencimento</option>
+        </select>
+      </div>
+      <div>
+        <label class="flabel">Ano de Referência</label>
+        <select class="fsel" id="npAnoRef"><option>2026</option><option>2025</option></select>
+      </div>
+    </div>
+    <div class="fgrid full">
+      <div>
+        <label class="flabel">Observações</label>
+        <textarea class="finp" id="npObs" rows="2" placeholder="Notas sobre este pedido..."></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modalNovoPedido')">Cancelar</button>
+    <button class="btn btn-primary" onclick="savePedidoFerias()">✅ Guardar Pedido</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════ MODAL: JUSTIFICAR FALTA ═══════════ -->
+<div class="modal-bg" id="modalJustFalta">
+<div class="modal-box" style="max-width:400px;">
+  <div class="modal-hdr">
+    <h3>📋 Justificar Falta</h3>
+    <button class="modal-close" onclick="closeModal('modalJustFalta')">✕</button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="jfId">
+    <div class="fgrid full">
+      <div>
+        <label class="flabel">Justificação</label>
+        <select class="fsel" id="jfJust">
+          <option value="">— Seleccione —</option>
+          <option>Atestado Médico</option>
+          <option>Licença de Maternidade</option>
+          <option>Caso de Força Maior</option>
+          <option>Autorização Prévia</option>
+          <option>Feriado</option>
+          <option>Outro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fgrid full">
+      <div>
+        <label class="flabel">Observações</label>
+        <textarea class="finp" id="jfObs" rows="2"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modalJustFalta')">Cancelar</button>
+    <button class="btn btn-success" onclick="saveJustFalta()">✅ Justificar</button>
+  </div>
+</div>
+</div>
+
+<!-- LOADING + TOASTS -->
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div><span id="loadingMsg">A carregar...</span></div>
+<div id="toasts"></div>
+
+
+<script id="andaSyncCore">
+// ════════════════════════════════════════════════════════════════════════════
+// ANDA SYNC CORE — Central synchronisation engine
+// Injected into all modules. Requires nq() / neonQuery() to be defined first.
+// ════════════════════════════════════════════════════════════════════════════
+
+const ANDA_SYNC_VERSION = '2.0';
+
+// ── Normalise collab ID ───────────────────────────────────────────────────
+function andaDbId(colabKey) {
+  if (!colabKey) return null;
+  return parseInt(String(colabKey).replace(/^[cn]_/, '')) || null;
+}
+function andaColabKey(id, table) {
+  return (table === 'colaboradores_novos' ? 'n_' : 'c_') + id;
+}
+
+// ── Audit log ─────────────────────────────────────────────────────────────
+async function andaAudit(tipo, colabId, campo, valorAntigo, valorNovo, modulo) {
+  const user = _andaCurrentUser();
+  try {
+    await _andaNq(
+      `INSERT INTO audit_log (tipo, colab_id, campo, valor_antigo, valor_novo, modulo, utilizador, criado_em)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
+      [tipo, colabId || null, campo || null,
+       valorAntigo != null ? String(valorAntigo).slice(0, 500) : null,
+       valorNovo   != null ? String(valorNovo  ).slice(0, 500) : null,
+       modulo || 'sistema', user]
+    );
+  } catch(e) { console.warn('[Audit]', e.message); }
+}
+
+function _andaCurrentUser() {
+  try {
+    const u = JSON.parse(sessionStorage.getItem('anda_user') || '{}');
+    return u.nome || u.username || 'sistema';
+  } catch(e) { return 'sistema'; }
+}
+
+// Use whichever query function is available
+function _andaNq(sql, params) {
+  if (typeof nq === 'function') return nq(sql, params);
+  if (typeof neonQuery === 'function') return neonQuery(sql, params);
+  return Promise.resolve(null);
+}
+
+// ── RULE 1 & 2: Sync new collab to all modules ───────────────────────────
+async function andaSyncNewColab(colabData, sourceModulo) {
+  /*
+   * colabData: { id, nome, cargo, tipo, distrito, activo, estado, table }
+   * After a colaborador is created in any module, ensure they exist in:
+   *   - colaboradores (or colaboradores_novos)
+   *   - prova_vida (stub)
+   *   - folha_salario (current month, if activo)
+   */
+  if (!colabData || !colabData.nome) return null;
+  const dbId   = colabData.id || colabData._dbId;
+  const table  = colabData._table || colabData.table || 'colaboradores_novos';
+  const modulo = sourceModulo || 'sistema';
+
+  // 1. Ensure prova_vida stub exists
+  if (dbId) {
+    try {
+      await _andaNq(
+        `INSERT INTO prova_vida (colaborador_id, nome, cargo, tipo, distrito, activo, estado, prova_vida_status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'pendente')
+         ON CONFLICT (colaborador_id) DO NOTHING`,
+        [dbId, colabData.nome, colabData.cargo || '', colabData.tipo || 'MTS',
+         colabData.distrito || '', colabData.activo !== false, colabData.estado || 'activo']
+      );
+    } catch(e) { console.warn('[Sync] PV stub error:', e.message); }
+  }
+
+  // 2. Audit
+  await andaAudit('criacao', dbId, null, null, JSON.stringify({
+    nome: colabData.nome, cargo: colabData.cargo, distrito: colabData.distrito
+  }), modulo);
+
+  return dbId;
+}
+
+// ── RULE 6: Name consistency ──────────────────────────────────────────────
+async function andaSyncNomeUpdate(dbId, nomeAntigo, nomeNovo, modulo) {
+  if (!dbId || !nomeNovo || nomeAntigo === nomeNovo) return;
+  const ops = [
+    _andaNq(`UPDATE colaboradores       SET nome=$1 WHERE id=$2`, [nomeNovo, dbId]),
+    _andaNq(`UPDATE colaboradores_novos SET nome=$1 WHERE id=$2`, [nomeNovo, dbId]),
+    _andaNq(`UPDATE prova_vida          SET nome=$1 WHERE colaborador_id=$2`, [nomeNovo, dbId]),
+    _andaNq(`UPDATE folha_salario       SET nome=$1 WHERE colab_key LIKE $2`, [nomeNovo, '%_' + dbId]),
+  ];
+  await Promise.allSettled(ops);
+  await andaAudit('alteracao_nome', dbId, 'nome', nomeAntigo, nomeNovo, modulo || 'sistema');
+}
+
+// ── RULE 4: Faltas não justificadas → discount calculation ───────────────
+async function andaGetFaltasNJ(colabKey, mes, ano) {
+  /*
+   * Returns { count, desconto_mzn } for a given colaborador/month.
+   * Reads from efectividade_registos WHERE presente=false AND justificada=false
+   */
+  const dbId = andaDbId(colabKey);
+  if (!dbId) return { count: 0, desconto_mzn: 0 };
+  try {
+    const rows = await _andaNq(
+      `SELECT COUNT(*) as cnt,
+              COALESCE((SELECT salario_mzm FROM prova_vida WHERE colaborador_id=$1 LIMIT 1), 0) as salario
+       FROM efectividade_registos
+       WHERE colaborador_id=$1
+         AND EXTRACT(MONTH FROM data)=$2
+         AND EXTRACT(YEAR  FROM data)=$3
+         AND presente=false AND justificada=false`,
+      [dbId, mes, ano]
+    );
+    if (!rows || !rows[0]) return { count: 0, desconto_mzn: 0 };
+    const count = parseInt(rows[0].cnt) || 0;
+    const sal   = parseFloat(rows[0].salario) || 0;
+    return { count, desconto_mzn: sal > 0 ? Math.round((sal / 30) * count * 100) / 100 : 0 };
+  } catch(e) {
+    console.warn('[Sync] getFaltasNJ error:', e.message);
+    return { count: 0, desconto_mzn: 0 };
+  }
+}
+
+// ── RULE 5: Persist efectividade entry ───────────────────────────────────
+async function andaSaveEfectividade(colabId, data, valor, justificada, obs, modulo) {
+  const dbId = andaDbId(colabId);
+  if (!dbId) return false;
+  const presente = (valor === '1' || valor === 1 || valor === 'H' || valor === 'V' || valor === 'MP' || valor === 'F' || valor === 'E' || valor === 'P');
+  try {
+    await _andaNq(
+      `INSERT INTO efectividade_registos
+         (colaborador_id, data, valor, presente, justificada, obs, criado_em)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW())
+       ON CONFLICT (colaborador_id, data)
+       DO UPDATE SET valor=$3, presente=$4, justificada=$5, obs=$6, actualizado_em=NOW()`,
+      [dbId, data, String(valor), presente, justificada || false, obs || null]
+    );
+    return true;
+  } catch(e) {
+    console.warn('[Sync] saveEfectividade error:', e.message);
+    return false;
+  }
+}
+
+// ── RULE 7: Salary update cascade ─────────────────────────────────────────
+async function andaSyncSalarioUpdate(colabKey, mes, ano, novoSalario, modulo) {
+  const dbId = andaDbId(colabKey);
+  if (!dbId) return;
+  // Update folha_salario
+  await _andaNq(
+    `UPDATE folha_salario SET salario_base=$1, actualizado_em=NOW()
+     WHERE colab_key=$2 AND mes=$3 AND ano=$4`,
+    [novoSalario, colabKey, mes, ano]
+  );
+  // Update prova_vida
+  await _andaNq(
+    `UPDATE prova_vida SET salario_mzm=$1 WHERE colaborador_id=$2`,
+    [novoSalario, dbId]
+  );
+  await andaAudit('alteracao_salario', dbId, 'salario_base', null, novoSalario, modulo || 'folha_salario');
+}
+
+// ── RULE 3 / RULE 4: Enrich recibo with faltas data ───────────────────────
+async function andaEnrichReciboColab(colab, mes, ano) {
+  /*
+   * Returns colab enriched with:
+   *   .faltasNJ     — count of unjustified absences this month
+   *   .descontoFNJ  — MZN discount for unjustified absences
+   *   .diasEfectivos — actual days worked (30 - faltasNJ)
+   */
+  const { count, desconto_mzn } = await andaGetFaltasNJ(colab.key || colab.colab_key, mes, ano);
+  const diasBase = parseInt(colab.dias) || 30;
+  return {
+    ...colab,
+    faltasNJ:      count,
+    descontoFNJ:   desconto_mzn,
+    dias_efectivos: Math.max(0, diasBase - count),
+  };
+}
+
+// ── RULE 8: Emit recibo audit entry ───────────────────────────────────────
+async function andaAuditReciboEmissao(colabKey, mes, ano, liq) {
+  const dbId = andaDbId(colabKey);
+  await andaAudit('emissao_recibo', dbId, 'mes_ano', null, `${mes}/${ano} liq=${liq}`, 'recibos');
+}
+
+// ── Estado change (activate / deactivate) ────────────────────────────────
+async function andaSyncEstadoColab(dbId, novoEstado, razao, data, modulo) {
+  const activo = (novoEstado === 'activo');
+  const ops = [
+    _andaNq(`UPDATE colaboradores       SET estado=$1, activo=$2 WHERE id=$3`, [novoEstado, activo, dbId]),
+    _andaNq(`UPDATE colaboradores_novos SET estado=$1, activo=$2 WHERE id=$3`, [novoEstado, activo, dbId]),
+    _andaNq(`UPDATE prova_vida          SET estado=$1, activo=$2 WHERE colaborador_id=$3`, [novoEstado, activo, dbId]),
+    _andaNq(`UPDATE folha_salario       SET activo=$1 WHERE colab_key LIKE $2 AND mes=(SELECT MAX(mes) FROM folha_salario WHERE colab_key LIKE $2)`,
+            [activo, '%_'+dbId]),
+  ];
+  await Promise.allSettled(ops);
+  await andaAudit(activo ? 'reactivacao' : 'desactivacao', dbId, 'estado', null,
+    (razao || novoEstado) + (data ? ' em ' + data : ''), modulo || 'sistema');
+}
+
+console.log('[ANDA Sync Core v' + ANDA_SYNC_VERSION + '] Loaded');
+
+</script>
+<script id="andaFFEngine">
+// ════════════════════════════════════════════════════════════════════════════
+// ANDA FALTAS & FÉRIAS ENGINE v1.0
+// Central engine for all absence, leave and salary impact calculations.
+// Injected into all modules after andaSyncCore.
+// ════════════════════════════════════════════════════════════════════════════
+
+const ANDA_FFE_VERSION = '1.0';
+
+// ── Attendance code classification ───────────────────────────────────────
+const FFE_CODES = {
+  '1':  { label:'Presente',              tipo:'presente',    conta_dia:true,  desconto:false, ferias:false },
+  'H':  { label:'Horas (parcial)',        tipo:'presente',    conta_dia:true,  desconto:false, ferias:false },
+  'V':  { label:'Férias',                 tipo:'ferias',      conta_dia:true,  desconto:false, ferias:true  },
+  'F':  { label:'Feriado',                tipo:'justificada', conta_dia:true,  desconto:false, ferias:false },
+  'MP': { label:'Maternidade/Paternidade',tipo:'justificada', conta_dia:true,  desconto:false, ferias:false },
+  'E':  { label:'Doença (Atestado)',       tipo:'justificada', conta_dia:true,  desconto:false, ferias:false },
+  'P':  { label:'Permissão',              tipo:'justificada', conta_dia:true,  desconto:false, ferias:false },
+  'SL': { label:'Licença Sem Vencimento', tipo:'licenca',     conta_dia:false, desconto:true,  ferias:false },
+  'SS': { label:'Suspensão',              tipo:'suspensao',   conta_dia:false, desconto:true,  ferias:false },
+  'AP': { label:'Ausência Parcial',       tipo:'parcial',     conta_dia:true,  desconto:true,  ferias:false },
+  'O':  { label:'Outra Ausência',         tipo:'injustificada',conta_dia:false,desconto:true,  ferias:false },
+  'D':  { label:'Descanso',               tipo:'descanso',    conta_dia:true,  desconto:false, ferias:false },
+};
+
+// Absence codes that MAY be justified or not
+const FFE_AMBIGUOUS = ['V','E','P','O','MP'];
+
+function ffeCodeInfo(val) {
+  if (!val) return FFE_CODES['1'];
+  const v = String(val).toUpperCase().replace(/^\d+h$/i,'H');
+  return FFE_CODES[v] || FFE_CODES['O'];
+}
+
+function ffeIsNJ(val, justificada) {
+  const info = ffeCodeInfo(val);
+  if (info.tipo === 'presente' || info.tipo === 'descanso' || info.tipo === 'ferias') return false;
+  if (FFE_AMBIGUOUS.includes(String(val||'').toUpperCase())) return justificada === false;
+  return info.desconto;
+}
+
+// ── Accumulator calculation for a colaborador ────────────────────────────
+function ffeCalcAcum(attendanceByMes, targetMes, targetAno) {
+  /*
+   * attendanceByMes: { mes: { dia: { val, justificada } } }
+   * Calculates cumulative totals from month 1 to targetMes.
+   * Returns object with per-month and YTD totals.
+   */
+  const ytd = {
+    diasTrabalhados: 0, diasFerias: 0, diasFaltasNJ: 0, diasFaltasJ: 0,
+    diasLicenca: 0, diasSuspensao: 0, diasAusenciaP: 0,
+    totalFaltas: 0, meses: 0
+  };
+  const byMes = {};
+
+  for (let m = 1; m <= targetMes; m++) {
+    const mesData = (attendanceByMes[m] || attendanceByMes[String(m)]) || {};
+    const stat = ffeCalcMes(mesData);
+    byMes[m] = stat;
+    ytd.diasTrabalhados += stat.diasTrabalhados;
+    ytd.diasFerias      += stat.diasFerias;
+    ytd.diasFaltasNJ    += stat.diasFaltasNJ;
+    ytd.diasFaltasJ     += stat.diasFaltasJ;
+    ytd.diasLicenca     += stat.diasLicenca;
+    ytd.diasSuspensao   += stat.diasSuspensao;
+    ytd.diasAusenciaP   += stat.diasAusenciaP;
+    ytd.totalFaltas     += stat.totalFaltas;
+    ytd.meses++;
+  }
+  return { ytd, byMes };
+}
+
+function ffeCalcMes(mesData) {
+  const stat = {
+    diasTrabalhados:0, diasFerias:0, diasFaltasNJ:0, diasFaltasJ:0,
+    diasLicenca:0, diasSuspensao:0, diasAusenciaP:0, totalFaltas:0,
+    horasTrabalhadas:0
+  };
+  for (const dia in mesData) {
+    const att  = mesData[dia];
+    const val  = (typeof att === 'object' ? att.val : att) || '';
+    const just = typeof att === 'object' ? att.justificada : null;
+    const info = ffeCodeInfo(val);
+
+    if (info.tipo === 'presente') {
+      stat.diasTrabalhados++;
+      if (val === 'H') stat.horasTrabalhadas += parseFloat(String(val).replace('H','')) || 8;
+    } else if (info.tipo === 'ferias') {
+      stat.diasFerias++;
+      stat.diasTrabalhados++;
+    } else if (info.tipo === 'descanso') {
+      // weekend rest — don't count
+    } else {
+      stat.totalFaltas++;
+      if (info.tipo === 'licenca')    stat.diasLicenca++;
+      else if (info.tipo === 'suspensao') stat.diasSuspensao++;
+      else if (info.tipo === 'parcial')   stat.diasAusenciaP++;
+      else if (ffeIsNJ(val, just))    stat.diasFaltasNJ++;
+      else                            stat.diasFaltasJ++;
+      if (info.conta_dia) stat.diasTrabalhados++;
+    }
+  }
+  return stat;
+}
+
+// ── Salary impact calculation ─────────────────────────────────────────────
+function ffeCalcDescontos(salarioBase, acumMes) {
+  if (!salarioBase || salarioBase <= 0) return { descontoFNJ: 0, descontoLicenca: 0, descontoSuspensao: 0, total: 0 };
+  const diario = salarioBase / 30;
+  const descontoFNJ      = Math.round(diario * (acumMes.diasFaltasNJ    || 0) * 100) / 100;
+  const descontoLicenca  = Math.round(diario * (acumMes.diasLicenca     || 0) * 100) / 100;
+  const descontoSuspensao= Math.round(diario * (acumMes.diasSuspensao   || 0) * 100) / 100;
+  const descontoAP       = Math.round(diario * (acumMes.diasAusenciaP   || 0) * 0.5 * 100) / 100; // 50% for partial
+  return {
+    descontoFNJ, descontoLicenca, descontoSuspensao, descontoAP,
+    total: Math.round((descontoFNJ + descontoLicenca + descontoSuspensao + descontoAP) * 100) / 100
+  };
+}
+
+// ── Férias saldo calculation ─────────────────────────────────────────────
+async function ffeGetSaldoFerias(colabKey, ano) {
+  const DIREITO = 30; // working days per year
+  const dbId = andaDbId(colabKey);
+  let aprovados = 0, pendentes = 0, saldoAnoAnterior = 0;
+
+  if (dbId) {
+    try {
+      const rows = await _andaNq(
+        `SELECT estado, COALESCE(SUM(dias_uteis),0) as total
+         FROM plano_ferias WHERE colaborador_id=$1 AND ano=$2
+         GROUP BY estado`, [dbId, ano]);
+      if (rows) rows.forEach(r => {
+        if (r.estado === 'aprovado') aprovados = parseInt(r.total) || 0;
+        if (r.estado === 'pendente') pendentes = parseInt(r.total) || 0;
+      });
+      // Previous year approved not carried — simplified: 0
+    } catch(e) {}
+  }
+  return {
+    direito: DIREITO,
+    aprovados,
+    pendentes,
+    saldo: Math.max(0, DIREITO - aprovados),
+    disponivel: Math.max(0, DIREITO - aprovados - pendentes),
+  };
+}
+
+// ── Risk indicators ──────────────────────────────────────────────────────
+function ffeRiskLevel(acumYTD, saldoFerias) {
+  const risks = [];
+  const fnj = acumYTD.diasFaltasNJ || 0;
+  const ferV = acumYTD.diasFerias   || 0;
+
+  if (fnj >= 10) risks.push({ level: 'critico', msg: `${fnj} faltas NJ — risco disciplinar elevado`, icon: '🚨' });
+  else if (fnj >= 5) risks.push({ level: 'alto', msg: `${fnj} faltas NJ — atenção requerida`, icon: '⚠️' });
+  else if (fnj >= 3) risks.push({ level: 'medio', msg: `${fnj} faltas NJ este ano`, icon: '🔶' });
+
+  if (saldoFerias && saldoFerias.saldo <= 5 && saldoFerias.aprovados === 0)
+    risks.push({ level: 'info', msg: `${saldoFerias.saldo} dias de férias por gozar (vencidas)`, icon: '🏖️' });
+
+  if ((acumYTD.diasSuspensao || 0) > 0)
+    risks.push({ level: 'alto', msg: `${acumYTD.diasSuspensao} dia(s) de suspensão`, icon: '🔴' });
+
+  return risks;
+}
+
+// ── DB: save monthly falta acumulados ────────────────────────────────────
+async function ffeSaveAcumulados(colabKey, mes, ano, stat, salarioBase) {
+  const dbId = andaDbId(colabKey);
+  if (!dbId) return;
+  const desc = ffeCalcDescontos(salarioBase, stat);
+  try {
+    await _andaNq(
+      `INSERT INTO falta_acumulados
+         (colaborador_id, mes, ano, dias_trabalhados, dias_ferias,
+          dias_falta_nj, dias_falta_j, dias_licenca, dias_suspensao,
+          desconto_total, criado_em)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
+       ON CONFLICT (colaborador_id, mes, ano)
+       DO UPDATE SET
+         dias_trabalhados=$4, dias_ferias=$5, dias_falta_nj=$6,
+         dias_falta_j=$7, dias_licenca=$8, dias_suspensao=$9,
+         desconto_total=$10, actualizado_em=NOW()`,
+      [dbId, mes, ano,
+       stat.diasTrabalhados, stat.diasFerias,
+       stat.diasFaltasNJ, stat.diasFaltasJ,
+       stat.diasLicenca, stat.diasSuspensao,
+       desc.total]
+    );
+  } catch(e) { console.warn('[FFE] saveAcumulados:', e.message); }
+}
+
+// ── DB: load monthly acumulados ─────────────────────────────────────────
+async function ffeLoadAcumulados(colabKey, ano) {
+  const dbId = andaDbId(colabKey);
+  if (!dbId) return {};
+  try {
+    const rows = await _andaNq(
+      `SELECT mes, dias_trabalhados, dias_ferias, dias_falta_nj, dias_falta_j,
+              dias_licenca, dias_suspensao, desconto_total
+       FROM falta_acumulados
+       WHERE colaborador_id=$1 AND ano=$2 ORDER BY mes ASC`,
+      [dbId, ano]);
+    const map = {};
+    if (rows) rows.forEach(r => { map[r.mes] = r; });
+    return map;
+  } catch(e) { return {}; }
+}
+
+// ── DB: get YTD acumulado from DB ────────────────────────────────────────
+async function ffeGetYTD(colabKey, mesFim, ano) {
+  const dbId = andaDbId(colabKey);
+  if (!dbId) return { diasFaltasNJ: 0, diasFaltasJ: 0, diasFerias: 0, descontoTotal: 0 };
+  try {
+    const rows = await _andaNq(
+      `SELECT
+         COALESCE(SUM(dias_falta_nj),0)   as falta_nj,
+         COALESCE(SUM(dias_falta_j),0)    as falta_j,
+         COALESCE(SUM(dias_ferias),0)     as ferias,
+         COALESCE(SUM(desconto_total),0)  as desconto
+       FROM falta_acumulados
+       WHERE colaborador_id=$1 AND ano=$2 AND mes<=$3`,
+      [dbId, ano, mesFim]);
+    const r = rows && rows[0] ? rows[0] : {};
+    return {
+      diasFaltasNJ: parseFloat(r.falta_nj) || 0,
+      diasFaltasJ:  parseFloat(r.falta_j)  || 0,
+      diasFerias:   parseFloat(r.ferias)    || 0,
+      descontoTotal:parseFloat(r.desconto)  || 0,
+    };
+  } catch(e) { return { diasFaltasNJ:0, diasFaltasJ:0, diasFerias:0, descontoTotal:0 }; }
+}
+
+console.log('[ANDA FFE v' + ANDA_FFE_VERSION + '] Loaded');
+
+</script>
+<script>
+const COLABORADORES_FALLBACK = [
+  { id:'c_1',  nome:"Francisco Alberto Cumbucane",    cargo:"Oficial de M & A",                   tipo:"Staff",    distrito:"CIDADE DE TETE" },
+  { id:'c_2',  nome:"Nelsone Pedro Mutepa",            cargo:"Supervisor Distrital",               tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_3',  nome:"Genito Jose Afonso",              cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_4',  nome:"Alima Ali Mussequece",            cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_5',  nome:"Maria Diolinda Olimpio Xavier",   cargo:"Paralegal",                          tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_6',  nome:"Anita Albano Vale Rabeca",        cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_7',  nome:"Herminia Rogerio Chiau",          cargo:"Paralegal",                          tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_8',  nome:"Yolanda David de Castro",         cargo:"Paralegal",                          tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_9',  nome:"Danilson Bertil Albano",          cargo:"Supervisor Distrital",               tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_10', nome:"Samuel Epulane Almeida",          cargo:"Supervisor Distrital",               tipo:"MTS",      distrito:"CHIFUNDE" },
+  { id:'c_11', nome:"Rosie Mavinho Banda",             cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"CHIFUNDE" },
+  { id:'c_12', nome:"Lufinesse Ruben Flaquessone",     cargo:"Paralegal",                          tipo:"MTS",      distrito:"CHIFUNDE" },
+  { id:'c_13', nome:"Luis Tinga Rungo",                cargo:"Conselheiro(a) Leigo(a) Reclusos",  tipo:"Reclusos", distrito:"CHANGARA", _table:'colaboradores', _dbId:13 },
+  { id:'c_14', nome:"Dimissone Gervásio Maciano",      cargo:"Supervisor Distrital",               tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_15', nome:"Herminio Renda Jorge Augusto",    cargo:"Supervisor Distrital",               tipo:"MTS",      distrito:"CAHORA-BASSA" },
+  { id:'c_16', nome:"Danubio Antonio Domingos",        cargo:"Paralegal",                          tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_17', nome:"Amauro de Luis Magaio",           cargo:"Paralegal",                          tipo:"MTS",      distrito:"MUTARARA" },
+  { id:'c_18', nome:"Cristina André Wadissone",        cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_19', nome:"Patricia Fabião Eressone",        cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_20', nome:"Manecas Francisco Xavier Jamal",  cargo:"Supervisor Distrital",               tipo:"MTS",      distrito:"MUTARARA" },
+  { id:'c_21', nome:"Lurdes Costa Nhampeza",           cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"MUTARARA" },
+  { id:'c_22', nome:"Rosita Evaristo Blaidone",        cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"CAHORA-BASSA" },
+  { id:'c_23', nome:"Sergio Fernando",                 cargo:"Paralegal",                          tipo:"MTS",      distrito:"CAHORA-BASSA" },
+  { id:'c_24', nome:"Frank Lameque Jose",              cargo:"HSH Paralegal",                      tipo:"HSH",      distrito:"CIDADE DE TETE" },
+  { id:'c_25', nome:"Abel Jussulo L. Karim",           cargo:"Supervisor Distrital",               tipo:"HSH", distrito:"CIDADE DE TETE", _table:'colaboradores', _dbId:25 },
+  { id:'c_26', nome:"Euclides Joao B. Maque",          cargo:"Conselheiro(a) Leigo(a) Reclusos",  tipo:"Reclusos", distrito:"ANGÓNIA", _table:'colaboradores', _dbId:26 },
+  { id:'c_27', nome:"Amadeu Samson Timu",              cargo:"Conselheiro(a) Leigo(a) Reclusos",  tipo:"Reclusos", distrito:"ANGÓNIA", _table:'colaboradores', _dbId:27 },
+  { id:'c_28', nome:"Celso Kumbucani",                 cargo:"Conselheiro(a) Leigo(a) Reclusos",  tipo:"Reclusos", distrito:"CIDADE DE TETE", _table:'colaboradores', _dbId:28 },
+  { id:'c_29', nome:"Delma Emilio Dos Santos",         cargo:"Conselheiro(a) Leigo(a)",            tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_30', nome:"Filomena Titos Uamusse",          cargo:"Conselheiro(a) Leigo(a) Reclusos",  tipo:"Reclusos", distrito:"CIDADE DE TETE", _table:'colaboradores', _dbId:30 },
+  { id:'c_31', nome:"Tiago Jaime Ronsolo",             cargo:"Director Executivo",                 tipo:"Staff",    distrito:"SEDE" },
+  { id:'c_32', nome:"Albertino Atanasio",              cargo:"Gestor Programatico",                tipo:"Staff",    distrito:"SEDE" },
+  { id:'c_33', nome:"Daniel Filipe Domingos",          cargo:"Gestor de Admin & Fin.",             tipo:"Staff",    distrito:"SEDE" },
+  { id:'c_34', nome:"Rodrigues Alexandre Tiago",       cargo:"Oficial de Finanças",                tipo:"Staff",    distrito:"CIDADE DE TETE" },
+  { id:'c_35', nome:"Lucia Castigo",                   cargo:"Servente",                           tipo:"Staff",    distrito:"CIDADE DE TETE" },
+  { id:'c_36', nome:"Dorca Celestino S. Macasse",      cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_37', nome:"Leda Luis",                       cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_38', nome:"Madalena A. B. Sande",            cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_39', nome:"Chioneso Chimudza Temba",         cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_40', nome:"Tambudzai Chinyowa",              cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_41', nome:"Tambudzai Sajeni",                cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_42', nome:"Flora Francisco Fulucane",        cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_43', nome:"Ana Maria J. J. Carvalho",        cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_44', nome:"Runbidzai Chapendama",            cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MOATIZE" },
+  { id:'c_45', nome:"Ines da Conceição A. Rabuco",     cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CHIFUNDE" },
+  { id:'c_46', nome:"Rita Agustinho Saidone",          cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CHIFUNDE" },
+  { id:'c_47', nome:"Belita Daniel Salipano",          cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CHIFUNDE" },
+  { id:'c_48', nome:"Esperança Emiliano Ganizane",     cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_49', nome:"Isolda Mria Simão Daniel",        cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_50', nome:"Beatriz Inaci Basilio",           cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_51', nome:"Alice Jassitone Milissone",       cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_52', nome:"Ainessi Luis J. KathunkuNva",     cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_53', nome:"Rosa Pedro Gabriel",              cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_54', nome:"Teodosia Elias Chapotela",        cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_55', nome:"Catia José Guisado",              cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_56', nome:"Chila Lucio Fernando",            cargo:"Educadora de par",                   tipo:"MTS",      distrito:"ANGÓNIA" },
+  { id:'c_57', nome:"Cheila Jaime André Massanca",     cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MUTARARA" },
+  { id:'c_58', nome:"Eva Arlindo Manuel",              cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MUTARARA" },
+  { id:'c_59', nome:"Taima Jaime André",               cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MUTARARA" },
+  { id:'c_60', nome:"Zainaba Joao Escova",             cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CAHORA-BASSA" },
+  { id:'c_61', nome:"Leonilde Macario Jose Dias",      cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CAHORA-BASSA" },
+  { id:'c_62', nome:"Berta Frank Bene Vergonha",       cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CAHORA-BASSA" },
+  { id:'c_63', nome:"Sonia Paulo Maquina",             cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CAHORA-BASSA" },
+  { id:'c_64', nome:"Guida Mateus Vurande",            cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_65', nome:"Teresa José Paulo",               cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_66', nome:"Cacilda Carlos Samuel",           cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_67', nome:"Caronilda Horacio Jose",          cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_68', nome:"Lucia Alberto Taude",             cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_69', nome:"Aguida Isaac Machatine",          cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_70', nome:"Nurate Baltazar Camaca",          cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_71', nome:"Graca Sebastiao Feijao",          cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_72', nome:"Florencia Victor Assado",         cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_73', nome:"Cecília Daniel dos Santos",       cargo:"Educadora de par",                   tipo:"MTS",      distrito:"MUTARARA" },
+  { id:'c_74', nome:"Nocasse Francisco Lucas",         cargo:"Educadora de par",                   tipo:"MTS",      distrito:"CIDADE DE TETE" },
+  { id:'c_75', nome:"Ivanilde Joao Save",  cargo:"Paralegal",  tipo:"MTS",  distrito:"CIDADE DE TETE", _table:'colaboradores', _dbId:75 },
+  { id:'c_76', nome:"Madalena Filipe Tsenga",  cargo:"Educadora de Par",  tipo:"MTS",  distrito:"ANGÓNIA", _table:'colaboradores', _dbId:76 },
+  { id:'c_77', nome:"Arcinio Manuel Salige",  cargo:"Motorista",  tipo:"Staff",  distrito:"CIDADE DE TETE", _table:'colaboradores', _dbId:77 },
+  { id:'c_78', nome:"Chiliana Antonio",  cargo:"Educadora de Par",  tipo:"MTS",  distrito:"CIDADE DE TETE", _table:'colaboradores', _dbId:78 },
+];
+</script>
+
+<script>
+const WORKER_URL = 'https://anda-neon.rodriguestiago-anda.workers.dev';
+const MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const FERIADOS_MZ = ['01-01','07-04','18-04','01-05','25-06','07-09','25-09','04-10','10-11','25-12'];
+const DIREITO_ANUAL = 30;
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+let currentUser = null;
+let colaboradores = [];
+let _dbOnline = null, _dbFailCount = 0, _dbNextRetry = 0;
+const _DB_RETRY = 30000;
+
+// ── DB ────────────────────────────────────────────────────────────────────
+async function nq(sql, params) {
+  if (_dbOnline === false && Date.now() < _dbNextRetry) return null;
+  try {
+    const _ctrl = new AbortController();
+    const _tid  = setTimeout(function(){ _ctrl.abort(); }, 10000);
+    let r;
+    try {
+      r = await fetch(WORKER_URL, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sql, params: params || [] }),
+        signal: _ctrl.signal
+      });
+    } finally { clearTimeout(_tid); }
+    if (!r.ok) { _dbOnline=false; _dbFailCount++; _dbNextRetry=Date.now()+_DB_RETRY; showDbBanner(false,r.status); return null; }
+    const d = await r.json();
+    if (_dbOnline !== true) { _dbOnline=true; _dbFailCount=0; showDbBanner(true); }
+    return d.rows || [];
+  } catch(e) {
+    _dbOnline=false; _dbFailCount++;
+    _dbNextRetry=Date.now()+_DB_RETRY;
+    if(_dbFailCount===1) showDbBanner(false, e.message);
+    return null;
+  }
+}
+
+function showDbBanner(online, detail) {
+  let b = document.getElementById('dbBanner');
+  if(!b) return;
+  if(online) { b.style.cssText='background:#166534;color:white;padding:6px 16px;font-size:11px;font-weight:600;'; b.textContent='✅ Ligação restabelecida.'; setTimeout(()=>b.style.display='none',3000); }
+  else { b.style.cssText='background:#dc2626;color:white;padding:6px 16px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:10px;'; b.innerHTML='⚠️ Sem ligação à base de dados — dados locais.'+(detail?' ('+detail+')':'')+'<button onclick="retryNq()" style="margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:white;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px;">🔄 Tentar</button>'; }
+}
+async function retryNq() { _dbOnline=null;_dbFailCount=0;_dbNextRetry=0; const t=await nq('SELECT 1',[]); if(t) { showDbBanner(true); loadAll(); } }
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function toast(msg, type) {
+  const t=document.createElement('div'); t.className='toast-msg '+(type||''); t.textContent=msg;
+  const b=document.getElementById('toasts'); if(b) b.appendChild(t);
+  setTimeout(()=>t.remove(), 3500);
+}
+
+// ── Loading ────────────────────────────────────────────────────────────────
+function setLoad(on, msg) {
+  const o=document.getElementById('loadingOverlay');
+  const m=document.getElementById('loadingMsg');
+  if(o) o.classList.toggle('active',on);
+  if(m) m.textContent=msg||'A carregar...';
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function navTo(p) { window.location.href=p+'.html'; }
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-btn').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('page-'+page);
+  const sb=document.getElementById('sb-'+page);
+  if(el) el.classList.add('active');
+  if(sb) sb.classList.add('active');
+  // Lazy load page data
+  if(page==='dashboard') loadDashboard();
+  else if(page==='alertas') loadAlertas();
+  else if(page==='plano-ferias') loadPlanoFerias();
+  else if(page==='calendario') renderCalendario();
+  else if(page==='faltas') loadFaltas();
+  else if(page==='acumulados') loadAcumulados();
+}
+
+// ── Tab helpers ────────────────────────────────────────────────────────────
+function switchTab(bar, name, prefix) {
+  document.querySelectorAll('#'+bar+' .tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('[id^="'+prefix+'"]').forEach(p=>p.classList.remove('active'));
+  const activBtn=document.querySelector('#'+bar+' .tab-btn[onclick*="'+name+'"]');
+  const activPane=document.getElementById(prefix+'-'+name);
+  if(activBtn) activBtn.classList.add('active');
+  if(activPane) activPane.classList.add('active');
+}
+function switchPFTab(t){ switchTab('pf-tabbar',t,'pf'); if(t==='saldos') renderPFSaldos(); if(t==='trimestre') renderPFTrimestre(); }
+function switchFaltaTab(t){ switchTab('falta-tabbar',t,'falta'); }
+function openModal(id) { document.getElementById(id)?.classList.add('active'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function fmt(n) { return (parseFloat(n)||0).toLocaleString('pt-MZ',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function andaDbId(k) { if(!k) return null; return parseInt(String(k).replace(/^[cn]_/,''))||null; }
+function diasUteis(start, end) {
+  if(!start||!end) return 0;
+  let count=0, d=new Date(start), eDate=new Date(end);
+  while(d<=eDate) {
+    const dow=d.getDay();
+    const mmd=String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(dow!==0&&dow!==6&&!FERIADOS_MZ.includes(mmd)) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+
+// ── Load colaboradores ────────────────────────────────────────────────────
+async function loadColaboradores() {
+  try {
+    const rows = await nq('SELECT id,nome,cargo,tipo,distrito,activo,estado FROM colaboradores WHERE activo=true ORDER BY nome ASC',[]);
+    if(rows&&rows.length) {
+      colaboradores = rows.map(r=>({id:'c_'+r.id,_dbId:r.id,nome:r.nome,cargo:r.cargo,tipo:r.tipo,distrito:r.distrito,_table:'colaboradores'}));
+    } else {
+      colaboradores = COLABORADORES_FALLBACK.slice();
+    }
+    const novos = await nq('SELECT id,nome,cargo,tipo,distrito FROM colaboradores_novos WHERE activo=true ORDER BY nome ASC',[]);
+    if(novos) novos.forEach(r=>{
+      if(!colaboradores.some(c=>c.nome.trim().toLowerCase()===r.nome.trim().toLowerCase()))
+        colaboradores.push({id:'n_'+r.id,_dbId:r.id,nome:r.nome,cargo:r.cargo,tipo:r.tipo,distrito:r.distrito,_table:'colaboradores_novos'});
+    });
+  } catch(e) { colaboradores = COLABORADORES_FALLBACK.slice(); }
+  buildColabSidebar();
+}
+
+function buildColabSidebar() {
+  const el=document.getElementById('colabList'); if(!el) return;
+  el.innerHTML = colaboradores.slice(0,50).map(c=>`
+    <button class="sidebar-btn" onclick="showColabDetalhe('${c.id}')">
+      <i class="ti ti-user" style="font-size:13px;"></i>
+      <span style="font-size:11px;line-height:1.3;">${c.nome}</span>
+    </button>`).join('');
+}
+
+function filterSidebar() {
+  const q=(document.getElementById('sbSearch')?.value||'').toLowerCase();
+  const el=document.getElementById('colabList'); if(!el) return;
+  const filtered=colaboradores.filter(c=>c.nome.toLowerCase().includes(q)||(c.distrito||'').toLowerCase().includes(q));
+  el.innerHTML = filtered.slice(0,30).map(c=>`
+    <button class="sidebar-btn" onclick="showColabDetalhe('${c.id}')">
+      <i class="ti ti-user" style="font-size:13px;"></i>
+      <span style="font-size:11px;">${c.nome}</span>
+    </button>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  const mes=parseInt(document.getElementById('dashMes')?.value||new Date().getMonth()+1);
+  const ano=parseInt(document.getElementById('dashAno')?.value||new Date().getFullYear());
+  const dist=document.getElementById('dashDist')?.value||'';
+  setLoad(true,'A calcular resumo...');
+
+  let acumRows=[], pvRows=[];
+  try {
+    let sql=`SELECT fa.colaborador_id, fa.dias_trabalhados, fa.dias_ferias, fa.dias_falta_nj, fa.dias_falta_j,
+              fa.dias_licenca, fa.dias_suspensao, fa.desconto_total,
+              col.nome, col.cargo, col.distrito, col.tipo,
+              pv.salario_mzm
+             FROM falta_acumulados fa
+             LEFT JOIN colaboradores col ON col.id=fa.colaborador_id
+             LEFT JOIN prova_vida pv ON pv.colaborador_id=fa.colaborador_id
+             WHERE fa.mes=$1 AND fa.ano=$2`;
+    const params=[mes,ano];
+    if(dist){ sql+=' AND col.distrito=$3'; params.push(dist); }
+    acumRows = await nq(sql,params) || [];
+  } catch(e) { console.warn(e); }
+
+  // Fill in colaboradores not yet in falta_acumulados from fallback
+  let cols=colaboradores;
+  if(dist) cols=cols.filter(c=>c.distrito===dist);
+
+  const byId={};
+  acumRows.forEach(r=>{ byId[r.colaborador_id]={...r,_fromDB:true}; });
+
+  const rows=cols.map(col=>{
+    const dbId=andaDbId(col.id);
+    return byId[dbId] || {colaborador_id:dbId,nome:col.nome,cargo:col.cargo,distrito:col.distrito,dias_trabalhados:0,dias_ferias:0,dias_falta_nj:0,dias_falta_j:0,dias_licenca:0,dias_suspensao:0,desconto_total:0,salario_mzm:0};
+  });
+
+  // KPIs
+  const total=rows.length;
+  const emFerias=rows.filter(r=>parseFloat(r.dias_ferias)>0).length;
+  const faltasNJ=rows.reduce((s,r)=>s+(parseFloat(r.dias_falta_nj)||0),0);
+  const risco=rows.filter(r=>parseFloat(r.dias_falta_nj)>=5).length;
+
+  document.getElementById('kColabs').textContent=total;
+  document.getElementById('kFerias').textContent=emFerias;
+  document.getElementById('kFaltasNJ').textContent=faltasNJ.toFixed(0);
+  document.getElementById('kRisco').textContent=risco;
+  document.getElementById('kFeriasBar').style.width=(total>0?(emFerias/total*100):0)+'%';
+  document.getElementById('kFaltasBar').style.width=Math.min(100,faltasNJ/total*10)+'%';
+
+  // Table
+  window._dashRows=rows;
+  renderDashTable(rows);
+  setLoad(false);
+}
+
+function renderDashTable(rows) {
+  const tbody=document.getElementById('dashTableBody'); if(!tbody) return;
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--slate);">Sem dados — registe presenças na Folha de Efectividades.</td></tr>'; return; }
+  tbody.innerHTML=rows.map((r,i)=>{
+    const fnj=parseFloat(r.dias_falta_nj)||0;
+    const risk=fnj>=10?'critico':fnj>=5?'alto':fnj>=3?'medio':'ok';
+    const riskLbl={'critico':'🚨 Crítico','alto':'⚠️ Alto','medio':'🔶 Médio','ok':'✅ OK'}[risk];
+    const desc=parseFloat(r.desconto_total)||0;
+    return `<tr onclick="showColabDetalhe('c_${r.colaborador_id}')" style="cursor:pointer;">
+      <td style="color:var(--slate);">${i+1}</td>
+      <td style="font-weight:600;">${r.nome||'—'}</td>
+      <td style="font-size:11px;">${r.cargo||'—'}</td>
+      <td style="font-size:11px;">${r.distrito||'—'}</td>
+      <td style="text-align:center;">${parseFloat(r.dias_trabalhados)||0}</td>
+      <td style="text-align:center;color:#1d4ed8;">${parseFloat(r.dias_ferias)||0}</td>
+      <td style="text-align:center;color:#16a34a;">${parseFloat(r.dias_falta_j)||0}</td>
+      <td style="text-align:center;color:#dc2626;font-weight:${fnj>0?'700':'400'};">${fnj}</td>
+      <td style="text-align:center;color:#7c3aed;">${parseFloat(r.dias_licenca)||0}</td>
+      <td style="text-align:center;color:#b91c1c;">${parseFloat(r.dias_suspensao)||0}</td>
+      <td style="text-align:right;font-size:11px;">${desc>0?fmt(desc)+' MZN':''}</td>
+      <td><span class="risk-badge risk-${risk}">${riskLbl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterDashTable() {
+  const q=(document.getElementById('dashSearch')?.value||'').toLowerCase();
+  const rows=(window._dashRows||[]).filter(r=>(r.nome||'').toLowerCase().includes(q)||(r.distrito||'').toLowerCase().includes(q));
+  renderDashTable(rows);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ALERTAS
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadAlertas() {
+  const ano=document.getElementById('alertAno')?.value||new Date().getFullYear();
+  const el=document.getElementById('alertasList'); if(!el) return;
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--slate);">⏳ A analisar...</div>';
+
+  let rows=[];
+  try {
+    rows = await nq(
+      `SELECT fa.colaborador_id,
+              COALESCE(SUM(fa.dias_falta_nj),0) as fnj_ytd,
+              COALESCE(SUM(fa.dias_ferias),0) as ferias_ytd,
+              COALESCE(SUM(fa.desconto_total),0) as desc_ytd,
+              col.nome, col.cargo, col.distrito, pv.salario_mzm
+       FROM falta_acumulados fa
+       LEFT JOIN colaboradores col ON col.id=fa.colaborador_id
+       LEFT JOIN prova_vida pv ON pv.colaborador_id=fa.colaborador_id
+       WHERE fa.ano=$1 GROUP BY fa.colaborador_id,col.nome,col.cargo,col.distrito,pv.salario_mzm
+       HAVING SUM(fa.dias_falta_nj)>=3 OR SUM(fa.dias_suspensao)>0
+       ORDER BY fnj_ytd DESC`, [ano]) || [];
+  } catch(e) {}
+
+  // Also check saldo férias
+  let pfRows=[];
+  try {
+    pfRows = await nq(
+      `SELECT colaborador_id, COALESCE(SUM(CASE WHEN estado='aprovado' THEN dias_uteis ELSE 0 END),0) as gozados
+       FROM plano_ferias WHERE ano=$1 GROUP BY colaborador_id`, [ano]) || [];
+  } catch(e) {}
+  const pfMap={}; pfRows.forEach(r=>{ pfMap[r.colaborador_id]=parseInt(r.gozados)||0; });
+
+  if(!rows.length) {
+    el.innerHTML='<div class="alert success"><span class="alert-icon">✅</span><div>Nenhum colaborador em situação de risco este ano.</div></div>';
+    document.getElementById('sbAlertCount').textContent='0';
+    return;
+  }
+
+  document.getElementById('sbAlertCount').textContent=rows.length;
+  el.innerHTML=rows.map(r=>{
+    const fnj=parseFloat(r.fnj_ytd)||0;
+    const gozados=pfMap[r.colaborador_id]||0;
+    const saldo=DIREITO_ANUAL-gozados;
+    const risk=fnj>=10?'critico':fnj>=5?'alto':'medio';
+    const alerts=[];
+    if(fnj>=10) alerts.push({cls:'critico',msg:`🚨 ${fnj} faltas NJ — risco disciplinar elevado. Desconto acumulado: ${fmt(r.desc_ytd)} MZN`});
+    else if(fnj>=5) alerts.push({cls:'alto',msg:`⚠️ ${fnj} faltas NJ — atenção necessária`});
+    else if(fnj>=3) alerts.push({cls:'alto',msg:`🔶 ${fnj} faltas NJ este ano`});
+    if(saldo>0&&gozados===0) alerts.push({cls:'info',msg:`🏖️ ${saldo} dias de férias por gozar (não marcadas)`});
+    if(parseFloat(r.ferias_ytd)>0&&gozados===0) alerts.push({cls:'info',msg:`📋 Tem férias marcadas na efectividade mas sem plano aprovado`});
+    return `<div style="background:white;border-radius:10px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:700;">${r.nome}</span>
+        <span style="font-size:11px;color:var(--slate);">${r.cargo} · ${r.distrito}</span>
+        <span class="risk-badge risk-${risk}" style="margin-left:auto;">${fnj>=10?'🚨 Crítico':fnj>=5?'⚠️ Alto':'🔶 Médio'}</span>
+      </div>
+      ${alerts.map(a=>`<div class="alert ${a.cls}"><span class="alert-icon">ℹ️</span><div>${a.msg}</div></div>`).join('')}
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn btn-sm" onclick="showColabDetalhe('c_${r.colaborador_id}')"><i class="ti ti-user"></i> Ver Detalhe</button>
+        <button class="btn btn-sm btn-amber" onclick="openNovoPedidoFor('c_${r.colaborador_id}','${(r.nome||'').replace(/'/g,"\\'")}')"><i class="ti ti-beach"></i> Marcar Férias</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PLANO FÉRIAS
+// ═══════════════════════════════════════════════════════════════════════════
+let pfData = [];
+
+async function loadPlanoFerias() {
+  const ano=document.getElementById('pfAno')?.value||2026;
+  const dist=document.getElementById('pfDist')?.value||'';
+  const estado=document.getElementById('pfEstado')?.value||'';
+  setLoad(true,'A carregar plano...');
+
+  try {
+    let sql=`SELECT pf.*, col.nome, col.cargo, col.distrito, col.tipo
+             FROM plano_ferias pf
+             LEFT JOIN colaboradores col ON col.id=pf.colaborador_id
+             WHERE pf.ano=$1`;
+    const params=[ano];
+    let pi=2;
+    if(dist)   { sql+=` AND col.distrito=$${pi++}`; params.push(dist); }
+    if(estado) { sql+=` AND pf.estado=$${pi++}`;   params.push(estado); }
+    sql+=' ORDER BY pf.data_inicio ASC';
+    pfData = await nq(sql,params) || [];
+  } catch(e) { pfData=[]; }
+
+  renderPFLista();
+  setLoad(false);
+}
+
+function renderPFLista() {
+  const wrap=document.getElementById('pfListaWrap'); if(!wrap) return;
+  const isAdmin=currentUser?.role==='admin';
+  if(!pfData.length){ wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--slate);">Sem pedidos de férias para este período.<br><br><button class="btn btn-primary" onclick="openNovoPedido()"><i class="ti ti-plus"></i> Criar primeiro pedido</button></div>'; return; }
+
+  const total=pfData.length;
+  const aprov=pfData.filter(f=>f.estado==='aprovado').length;
+  const pend=pfData.filter(f=>f.estado==='pendente').length;
+  const dias=pfData.filter(f=>f.estado==='aprovado').reduce((s,f)=>s+(parseInt(f.dias_uteis)||0),0);
+
+  wrap.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);">
+      <div style="padding:12px 16px;text-align:center;border-right:1px solid var(--border);">
+        <div style="font-size:22px;font-weight:800;color:var(--blue);">${total}</div>
+        <div style="font-size:10px;color:var(--slate);text-transform:uppercase;">Total</div>
+      </div>
+      <div style="padding:12px 16px;text-align:center;border-right:1px solid var(--border);">
+        <div style="font-size:22px;font-weight:800;color:#15803d;">${aprov}</div>
+        <div style="font-size:10px;color:var(--slate);text-transform:uppercase;">Aprovados</div>
+      </div>
+      <div style="padding:12px 16px;text-align:center;border-right:1px solid var(--border);">
+        <div style="font-size:22px;font-weight:800;color:#d97706;">${pend}</div>
+        <div style="font-size:10px;color:var(--slate);text-transform:uppercase;">Pendentes</div>
+      </div>
+      <div style="padding:12px 16px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--violet);">${dias}</div>
+        <div style="font-size:10px;color:var(--slate);text-transform:uppercase;">Dias Aprov.</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="tbl">
+      <thead><tr>
+        <th>#</th><th>Colaborador</th><th>Distrito</th><th>Período</th>
+        <th>Dias Úteis</th><th>Tipo</th><th>Estado</th><th>Criado por</th><th>Acções</th>
+      </tr></thead>
+      <tbody>${pfData.map((f,i)=>{
+        const ini=f.data_inicio?new Date(f.data_inicio).toLocaleDateString('pt-MZ'):'—';
+        const fim=f.data_fim?new Date(f.data_fim).toLocaleDateString('pt-MZ'):'—';
+        const tipoLbl={'ferias_anuais':'Férias Anuais','ferias_proporcional':'Proporcional','folga_compensatoria':'Folga Comp.','licenca_sem_vencimento':'Lic. S/Venc.'}[f.tipo]||f.tipo||'—';
+        const stBadge={'aprovado':'b-aprovado','pendente':'b-pendente','rejeitado':'b-rejeitado','cancelado':'b-cancelado'}[f.estado]||'b-cancelado';
+        const stLbl={'aprovado':'✅ Aprovado','pendente':'⏳ Pendente','rejeitado':'❌ Rejeitado','cancelado':'🚫 Cancelado'}[f.estado]||f.estado;
+        const acts=isAdmin&&f.estado==='pendente'
+          ?`<button class="btn btn-sm btn-success" onclick="aprovarFerias(${f.id})">✅</button>
+            <button class="btn btn-sm btn-danger" onclick="rejeitarFerias(${f.id})">❌</button>`
+          :`<button class="btn btn-sm" onclick="cancelarFerias(${f.id})">🚫</button>`;
+        return `<tr>
+          <td style="color:var(--slate);">${i+1}</td>
+          <td style="font-weight:600;">${f.nome||'—'}</td>
+          <td style="font-size:11px;">${f.distrito||'—'}</td>
+          <td style="font-size:11px;">${ini} → ${fim}</td>
+          <td style="text-align:center;font-weight:700;color:var(--violet);">${f.dias_uteis||'—'}</td>
+          <td style="font-size:11px;">${tipoLbl}</td>
+          <td><span class="badge ${stBadge}">${stLbl}</span></td>
+          <td style="font-size:10px;color:var(--slate);">${f.criado_por||'—'}</td>
+          <td><div style="display:flex;gap:4px;">${acts}</div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+}
+
+async function renderPFSaldos() {
+  const ano=document.getElementById('pfAno')?.value||2026;
+  const wrap=document.getElementById('pfSaldosWrap'); if(!wrap) return;
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:var(--slate);">⏳ A calcular saldos...</div>';
+
+  let rows=[];
+  try {
+    rows = await nq(
+      `SELECT pf.colaborador_id,
+              COALESCE(SUM(CASE WHEN pf.estado='aprovado' THEN pf.dias_uteis ELSE 0 END),0) as gozados,
+              COALESCE(SUM(CASE WHEN pf.estado='pendente' THEN pf.dias_uteis ELSE 0 END),0) as pendente,
+              col.nome, col.distrito, col.cargo
+       FROM colaboradores col
+       LEFT JOIN plano_ferias pf ON pf.colaborador_id=col.id AND pf.ano=$1
+       WHERE col.activo=true
+       GROUP BY pf.colaborador_id,col.id,col.nome,col.distrito,col.cargo
+       ORDER BY col.nome ASC`, [ano]) || [];
+  } catch(e) {}
+
+  wrap.innerHTML=`<div style="overflow-x:auto;"><table class="tbl">
+    <thead><tr><th>#</th><th>Colaborador</th><th>Distrito</th><th>Direito</th><th>Gozados</th><th>Pendente</th><th>Disponível</th><th>Saldo</th><th>Progress</th></tr></thead>
+    <tbody>${rows.map((r,i)=>{
+      const gozados=parseInt(r.gozados)||0;
+      const pend=parseInt(r.pendente)||0;
+      const saldo=Math.max(0,DIREITO_ANUAL-gozados);
+      const disp=Math.max(0,saldo-pend);
+      const pct=Math.round(gozados/DIREITO_ANUAL*100);
+      return `<tr onclick="showColabDetalhe('c_${r.colaborador_id}')" style="cursor:pointer;">
+        <td style="color:var(--slate);">${i+1}</td>
+        <td style="font-weight:600;">${r.nome}</td>
+        <td style="font-size:11px;">${r.distrito||'—'}</td>
+        <td style="text-align:center;">${DIREITO_ANUAL}</td>
+        <td style="text-align:center;color:#1d4ed8;">${gozados}</td>
+        <td style="text-align:center;color:#d97706;">${pend>0?pend:''}</td>
+        <td style="text-align:center;color:#15803d;font-weight:700;">${disp}</td>
+        <td style="text-align:center;">${saldo}</td>
+        <td style="width:100px;"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${pct>90?'#dc2626':pct>60?'#d97706':'#16a34a'};"></div></div><span style="font-size:9px;">${pct}%</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+async function renderPFTrimestre() {
+  const ano=document.getElementById('pfAno')?.value||2026;
+  const wrap=document.getElementById('pfTrimestreWrap'); if(!wrap) return;
+  const trimestres=[
+    {label:'Q1 — Jan/Fev/Mar',meses:[1,2,3]},{label:'Q2 — Abr/Mai/Jun',meses:[4,5,6]},
+    {label:'Q3 — Jul/Ago/Set',meses:[7,8,9]},{label:'Q4 — Out/Nov/Dez',meses:[10,11,12]}
+  ];
+  let pfRows=[];
+  try { pfRows=await nq(`SELECT pf.*,col.nome,col.distrito FROM plano_ferias pf LEFT JOIN colaboradores col ON col.id=pf.colaborador_id WHERE pf.ano=$1 AND pf.estado='aprovado'`,[ano])||[]; } catch(e){}
+  wrap.innerHTML=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">`+
+    trimestres.map(q=>{
+      const qRows=pfRows.filter(f=>{
+        if(!f.data_inicio) return false;
+        const m=new Date(f.data_inicio).getMonth()+1;
+        return q.meses.includes(m);
+      });
+      return `<div class="tbl-wrap" style="overflow:hidden;">
+        <div style="background:var(--navy);color:white;padding:10px 14px;font-size:12px;font-weight:700;">${q.label} · ${qRows.length} aprovados · ${qRows.reduce((s,f)=>s+(parseInt(f.dias_uteis)||0),0)} dias</div>
+        ${qRows.length?`<table class="tbl"><thead><tr><th>Nome</th><th>Distrito</th><th>Período</th><th>Dias</th></tr></thead><tbody>
+          ${qRows.map(f=>`<tr><td style="font-weight:600;">${f.nome}</td><td style="font-size:11px;">${f.distrito||'—'}</td><td style="font-size:11px;">${f.data_inicio?new Date(f.data_inicio).toLocaleDateString('pt-MZ'):'—'} → ${f.data_fim?new Date(f.data_fim).toLocaleDateString('pt-MZ'):'—'}</td><td style="text-align:center;">${f.dias_uteis}</td></tr>`).join('')}
+        </tbody></table>`:
+        '<div style="padding:14px;text-align:center;color:var(--slate);font-size:12px;">Sem férias aprovadas</div>'}
+      </div>`;
+    }).join('')+`</div>`;
+}
+
+async function aprovarFerias(id) {
+  await nq('UPDATE plano_ferias SET estado=$1,aprovado_por=$2,aprovado_em=NOW() WHERE id=$3',['aprovado',currentUser?.nome||'admin',id]);
+  toast('✅ Férias aprovadas!','success');
+  loadPlanoFerias();
+}
+async function rejeitarFerias(id) {
+  if(!confirm('Rejeitar este pedido?')) return;
+  await nq('UPDATE plano_ferias SET estado=$1 WHERE id=$2',['rejeitado',id]);
+  toast('Pedido rejeitado.','warn');
+  loadPlanoFerias();
+}
+async function cancelarFerias(id) {
+  if(!confirm('Cancelar este pedido de férias?')) return;
+  await nq('UPDATE plano_ferias SET estado=$1 WHERE id=$2',['cancelado',id]);
+  toast('Pedido cancelado.','warn');
+  loadPlanoFerias();
+}
+
+// ── Novo pedido modal ─────────────────────────────────────────────────────
+function openNovoPedido() {
+  document.getElementById('npColSearch').value='';
+  document.getElementById('npColId').value='';
+  document.getElementById('npColNome').value='';
+  document.getElementById('npIni').value='';
+  document.getElementById('npFim').value='';
+  document.getElementById('npObs').value='';
+  document.getElementById('npDiasBadge').innerHTML='📅 Seleccione as datas para calcular os dias úteis';
+  document.getElementById('novoPedidoSaldoBadge').innerHTML='';
+  filterNpCols();
+  openModal('modalNovoPedido');
+}
+function openNovoPedidoFor(colId, nome) {
+  openNovoPedido();
+  document.getElementById('npColSearch').value=nome;
+  document.getElementById('npColId').value=colId;
+  document.getElementById('npColNome').value=nome;
+  filterNpCols();
+  loadNpSaldo(colId);
+}
+function filterNpCols() {
+  const q=(document.getElementById('npColSearch')?.value||'').toLowerCase();
+  const el=document.getElementById('npColList'); if(!el) return;
+  const filtered=colaboradores.filter(c=>c.nome.toLowerCase().includes(q)||(c.cargo||'').toLowerCase().includes(q)).slice(0,15);
+  el.innerHTML=filtered.map(c=>`<div onclick="selectNpCol('${c.id}','${c.nome.replace(/'/g,"\\'")}');event.stopPropagation();"
+    style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f8fafc;hover:background:#f0f9ff;">
+    <div style="font-weight:600;">${c.nome}</div>
+    <div style="font-size:10px;color:var(--slate);">${c.cargo} · ${c.distrito}</div>
+  </div>`).join('');
+}
+function selectNpCol(id, nome) {
+  document.getElementById('npColId').value=id;
+  document.getElementById('npColNome').value=nome;
+  document.getElementById('npColSearch').value=nome;
+  document.getElementById('npColList').innerHTML='';
+  loadNpSaldo(id);
+}
+async function loadNpSaldo(colId) {
+  const ano=document.getElementById('npAnoRef')?.value||2026;
+  const dbId=andaDbId(colId);
+  const el=document.getElementById('novoPedidoSaldoBadge');
+  if(!el||!dbId) return;
+  try {
+    const rows=await nq(`SELECT COALESCE(SUM(CASE WHEN estado='aprovado' THEN dias_uteis ELSE 0 END),0) as gozados,
+      COALESCE(SUM(CASE WHEN estado='pendente' THEN dias_uteis ELSE 0 END),0) as pendente
+      FROM plano_ferias WHERE colaborador_id=$1 AND ano=$2`,[dbId,ano]);
+    const r=rows&&rows[0]?rows[0]:{gozados:0,pendente:0};
+    const gozados=parseInt(r.gozados)||0;
+    const pend=parseInt(r.pendente)||0;
+    const saldo=Math.max(0,DIREITO_ANUAL-gozados);
+    const disp=Math.max(0,saldo-pend);
+    el.innerHTML=`<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:8px 12px;display:flex;gap:16px;font-size:11px;">
+      <span>📅 <strong>Direito:</strong> ${DIREITO_ANUAL} dias</span>
+      <span>✅ <strong>Gozados:</strong> ${gozados} dias</span>
+      <span style="color:${disp>0?'#15803d':'#dc2626'};">🏖️ <strong>Disponível:</strong> ${disp} dias</span>
+      ${pend>0?`<span style="color:#d97706;">⏳ Pendente: ${pend} dias</span>`:''}
+    </div>`;
+  } catch(e){}
+}
+function calcNpDias() {
+  const ini=document.getElementById('npIni')?.value;
+  const fim=document.getElementById('npFim')?.value;
+  const el=document.getElementById('npDiasBadge');
+  if(!ini||!fim||!el) return;
+  if(fim<ini){ el.innerHTML='<span style="color:#dc2626;">⚠️ Data de fim anterior ao início</span>'; return; }
+  const d=diasUteis(ini,fim);
+  el.innerHTML=`📅 <strong>${d} dias úteis</strong> de férias (excluindo fins de semana e feriados)`;
+}
+
+async function savePedidoFerias() {
+  const colId=document.getElementById('npColId')?.value;
+  const ini=document.getElementById('npIni')?.value;
+  const fim=document.getElementById('npFim')?.value;
+  const tipo=document.getElementById('npTipo')?.value;
+  const obs=document.getElementById('npObs')?.value||'';
+  const ano=document.getElementById('npAnoRef')?.value||2026;
+  if(!colId) { toast('Seleccione um colaborador.','error'); return; }
+  if(!ini||!fim) { toast('Defina as datas.','error'); return; }
+  if(fim<ini) { toast('Data inválida.','error'); return; }
+  const dias=diasUteis(ini,fim);
+  if(dias===0) { toast('Período sem dias úteis.','error'); return; }
+
+  // Check saldo
+  const dbId=andaDbId(colId);
+  const saldoRows=await nq(`SELECT COALESCE(SUM(CASE WHEN estado='aprovado' THEN dias_uteis ELSE 0 END),0) as gozados FROM plano_ferias WHERE colaborador_id=$1 AND ano=$2`,[dbId,ano]);
+  const gozados=parseInt(saldoRows&&saldoRows[0]?saldoRows[0].gozados:0)||0;
+  const saldo=DIREITO_ANUAL-gozados;
+  if(dias>saldo&&tipo==='ferias_anuais') {
+    if(!confirm(`Atenção: só tem ${saldo} dias disponíveis. Aprovar mesmo assim?`)) return;
+  }
+
+  const isAdmin=currentUser?.role==='admin';
+  const estado=isAdmin?'aprovado':'pendente';
+  await nq('INSERT INTO plano_ferias (colaborador_id,ano,data_inicio,data_fim,dias_uteis,tipo,estado,obs,criado_por,criado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())',
+    [dbId,ano,ini,fim,dias,tipo,estado,obs,currentUser?.nome||'sistema']);
+
+  toast('✅ Férias guardadas'+(isAdmin?' (aprovado automaticamente)':'— aguarda aprovação'),'success');
+  closeModal('modalNovoPedido');
+  loadPlanoFerias();
+  if(isAdmin) renderCalendario();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CALENDÁRIO
+// ═══════════════════════════════════════════════════════════════════════════
+let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
+let calData={};
+
+function calNav(d) { calMonth+=d; if(calMonth>11){calMonth=0;calYear++;}else if(calMonth<0){calMonth=11;calYear--;} renderCalendario(); }
+
+async function renderCalendario() {
+  const dist=document.getElementById('calDist')?.value||'';
+  const grid=document.getElementById('calGrid'); if(!grid) return;
+  document.getElementById('calTitle').textContent=MESES[calMonth+1]+' '+calYear;
+
+  // Load férias + faltas for this month
+  let feriasRows=[], faltasRows=[];
+  try {
+    feriasRows=await nq(`SELECT pf.data_inicio,pf.data_fim,col.nome,col.distrito FROM plano_ferias pf LEFT JOIN colaboradores col ON col.id=pf.colaborador_id WHERE pf.estado='aprovado' AND EXTRACT(YEAR FROM pf.data_inicio)=$1 ${dist?"AND col.distrito='"+dist+"'":''}  `,[calYear])||[];
+  } catch(e){}
+  try {
+    faltasRows=await nq(`SELECT er.data,er.valor,er.justificada,col.nome,col.distrito FROM efectividade_registos er LEFT JOIN colaboradores col ON col.id=er.colaborador_id WHERE er.presente=false AND EXTRACT(YEAR FROM er.data)=$1 AND EXTRACT(MONTH FROM er.data)=$2 ${dist?"AND col.distrito='"+dist+"'":''}  `,[calYear,calMonth+1])||[];
+  } catch(e){}
+
+  // Build day map
+  const dayMap={};
+  feriasRows.forEach(f=>{
+    let d=new Date(f.data_inicio), end=new Date(f.data_fim);
+    while(d<=end){
+      const k=d.toISOString().slice(0,10);
+      if(!dayMap[k]) dayMap[k]=[];
+      dayMap[k].push({type:'ferias',nome:f.nome});
+      d.setDate(d.getDate()+1);
+    }
+  });
+  faltasRows.forEach(f=>{
+    const k=f.data?f.data.slice(0,10):null; if(!k) return;
+    if(!dayMap[k]) dayMap[k]=[];
+    dayMap[k].push({type:f.justificada?'falta-j':'falta-nj',nome:f.nome});
+  });
+  calData=dayMap;
+
+  const FERIADOS_NACIONAIS=['01-01','07-04','18-04','01-05','25-06','07-09','25-09','04-10','10-11','25-12'];
+  const firstDow=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date().toISOString().slice(0,10);
+
+  let html=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const mmd=String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const dow=new Date(calYear,calMonth,d).getDay();
+    const isFer=FERIADOS_NACIONAIS.includes(mmd);
+    const isWk=dow===0||dow===6;
+    const events=dayMap[ds]||[];
+    const hasFerias=events.some(e=>e.type==='ferias');
+    const hasFNJ=events.some(e=>e.type==='falta-nj');
+    const hasFJ=events.some(e=>e.type==='falta-j');
+    let cls='cal-day';
+    if(ds===today) cls+=' today';
+    if(isWk) cls+=' weekend';
+    if(isFer) cls+=' feriado';
+    else if(hasFerias) cls+=' ferias';
+    else if(hasFNJ) cls+=' falta-nj';
+    else if(hasFJ) cls+=' falta-j';
+    const cnt=events.length;
+    html+=`<div class="${cls}" title="${events.slice(0,5).map(e=>e.nome).join('\n')}" onclick="showCalDay('${ds}')">
+      ${d}${cnt>0?`<div class="cal-dot" style="background:${hasFerias?'#1d4ed8':hasFNJ?'#dc2626':'#16a34a'};"></div>`:''}
+    </div>`;
+  }
+  grid.innerHTML=html;
+  renderCalEventos(dayMap);
+}
+
+function showCalDay(date) {}
+function renderCalEventos(dayMap) {
+  const el=document.getElementById('calEventos'); if(!el) return;
+  const prefix=calYear+'-'+String(calMonth+1).padStart(2,'0');
+  const keys=Object.keys(dayMap).filter(k=>k.startsWith(prefix)).sort();
+  if(!keys.length){ el.innerHTML='<div style="color:var(--slate);font-size:12px;padding:10px;">Sem eventos este mês.</div>'; return; }
+  el.innerHTML=keys.map(k=>{
+    const d=new Date(k).toLocaleDateString('pt-MZ',{day:'2-digit',month:'short'});
+    return `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;">
+      <div style="font-size:11px;font-weight:700;color:var(--blue);">${d}</div>
+      ${dayMap[k].map(e=>`<div style="font-size:11px;color:var(--slate);">${e.type==='ferias'?'🏖️':'❌'} ${e.nome}</div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FALTAS
+// ═══════════════════════════════════════════════════════════════════════════
+let faltasData=[];
+async function loadFaltas() {
+  const mes=document.getElementById('faltaMes')?.value||'';
+  const ano=document.getElementById('faltaAno')?.value||2026;
+  const dist=document.getElementById('faltaDist')?.value||'';
+  const tipo=document.getElementById('faltaTipo')?.value||'';
+  setLoad(true,'A carregar faltas...');
+
+  try {
+    let sql=`SELECT er.id,er.colaborador_id,er.data,er.valor,er.justificada,er.obs,
+              col.nome,col.cargo,col.distrito,pv.salario_mzm
+             FROM efectividade_registos er
+             LEFT JOIN colaboradores col ON col.id=er.colaborador_id
+             LEFT JOIN prova_vida pv ON pv.colaborador_id=er.colaborador_id
+             WHERE er.presente=false AND EXTRACT(YEAR FROM er.data)=$1`;
+    const params=[ano]; let pi=2;
+    if(mes) { sql+=` AND EXTRACT(MONTH FROM er.data)=$${pi++}`; params.push(mes); }
+    if(dist){ sql+=` AND col.distrito=$${pi++}`; params.push(dist); }
+    if(tipo==='nj') sql+=' AND er.justificada=false';
+    else if(tipo==='j') sql+=' AND er.justificada=true';
+    else if(tipo==='licenca') sql+=" AND er.valor='SL'";
+    else if(tipo==='suspensao') sql+=" AND er.valor='SS'";
+    sql+=' ORDER BY er.data DESC';
+    faltasData=await nq(sql,params)||[];
+  } catch(e) { faltasData=[]; }
+
+  const fnj=faltasData.filter(f=>!f.justificada).length;
+  const fj=faltasData.filter(f=>f.justificada).length;
+  const flic=faltasData.filter(f=>f.valor==='SL').length;
+  const desc=faltasData.filter(f=>!f.justificada).reduce((s,f)=>{
+    const sal=parseFloat(f.salario_mzm)||0;
+    return s+(sal>0?Math.round(sal/30*100)/100:0);
+  },0);
+
+  document.getElementById('kFNJ').textContent=fnj;
+  document.getElementById('kFJ').textContent=fj;
+  document.getElementById('kFLic').textContent=flic;
+  document.getElementById('kFDesc').textContent=desc>0?fmt(desc)+' MZN':'—';
+
+  renderFaltasGeral();
+  renderFaltasLista();
+  setLoad(false);
+}
+
+function renderFaltasGeral() {
+  const wrap=document.getElementById('faltaGeralWrap'); if(!wrap) return;
+  const byCol={};
+  faltasData.forEach(f=>{
+    const k=f.colaborador_id;
+    if(!byCol[k]) byCol[k]={nome:f.nome,cargo:f.cargo,distrito:f.distrito,sal:parseFloat(f.salario_mzm)||0,total:0,nj:0,j:0,lic:0,sus:0};
+    byCol[k].total++;
+    if(f.justificada) byCol[k].j++;
+    else {
+      byCol[k].nj++;
+      if(f.valor==='SL') byCol[k].lic++;
+      else if(f.valor==='SS') byCol[k].sus++;
+    }
+  });
+  const rows=Object.values(byCol).sort((a,b)=>b.nj-a.nj);
+  if(!rows.length){ wrap.innerHTML='<div style="text-align:center;padding:20px;color:var(--slate);">Sem faltas no período seleccionado.</div>'; return; }
+  wrap.innerHTML=`<div style="overflow-x:auto;"><table class="tbl">
+    <thead><tr><th>Colaborador</th><th>Cargo</th><th>Distrito</th><th>Total</th><th>NJ</th><th>Just.</th><th>Licença</th><th>Suspensão</th><th>Desconto Est.</th><th>Risco</th></tr></thead>
+    <tbody>${rows.map(r=>{
+      const desc=r.sal>0?fmt(r.nj*r.sal/30)+' MZN':'—';
+      const risk=r.nj>=10?'critico':r.nj>=5?'alto':r.nj>=3?'medio':'ok';
+      return `<tr onclick="showColabDetalhe('c_${Object.keys(byCol).find(k=>byCol[k]===r)}')" style="cursor:pointer;">
+        <td style="font-weight:600;">${r.nome}</td><td style="font-size:11px;">${r.cargo}</td><td style="font-size:11px;">${r.distrito}</td>
+        <td style="text-align:center;">${r.total}</td>
+        <td style="text-align:center;color:#dc2626;font-weight:700;">${r.nj}</td>
+        <td style="text-align:center;color:#15803d;">${r.j}</td>
+        <td style="text-align:center;color:#7c3aed;">${r.lic}</td>
+        <td style="text-align:center;color:#b91c1c;">${r.sus}</td>
+        <td style="font-size:11px;">${desc}</td>
+        <td><span class="risk-badge risk-${risk}">${risk==='ok'?'✅':risk==='medio'?'🔶':risk==='alto'?'⚠️':'🚨'} ${risk.charAt(0).toUpperCase()+risk.slice(1)}</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderFaltasLista() {
+  const wrap=document.getElementById('faltaListaWrap'); if(!wrap) return;
+  if(!faltasData.length){ wrap.innerHTML='<div style="text-align:center;padding:20px;color:var(--slate);">Sem faltas.</div>'; return; }
+  wrap.innerHTML=`<div style="overflow-x:auto;"><table class="tbl">
+    <thead><tr><th>#</th><th>Data</th><th>Colaborador</th><th>Distrito</th><th>Tipo</th><th>Justificada</th><th>Observação</th><th></th></tr></thead>
+    <tbody>${faltasData.map((f,i)=>{
+      const d=f.data?new Date(f.data).toLocaleDateString('pt-MZ'):'—';
+      const tipoLbl={'SL':'Licença S/Venc.','SS':'Suspensão','AP':'Aus. Parcial','V':'Férias','MP':'Maternidade','E':'Doença','F':'Feriado','P':'Permissão','O':'Outra'}[f.valor]||(f.valor||'Falta');
+      const jst=f.justificada?'<span class="badge b-aprovado">✅ Sim</span>':'<span class="badge b-rejeitado">❌ Não</span>';
+      return `<tr>
+        <td style="color:var(--slate);">${i+1}</td>
+        <td>${d}</td><td style="font-weight:600;">${f.nome||'—'}</td><td style="font-size:11px;">${f.distrito||'—'}</td>
+        <td><span class="badge b-ferias">${tipoLbl}</span></td>
+        <td>${jst}</td><td style="font-size:11px;color:var(--slate);">${f.obs||''}</td>
+        <td>${!f.justificada?`<button class="btn btn-sm btn-amber" onclick="openJustFalta(${f.id})">📋 Justificar</button>`:''}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function openJustFalta(id) { document.getElementById('jfId').value=id; document.getElementById('jfJust').value=''; document.getElementById('jfObs').value=''; openModal('modalJustFalta'); }
+async function saveJustFalta() {
+  const id=document.getElementById('jfId')?.value;
+  const just=document.getElementById('jfJust')?.value;
+  const obs=document.getElementById('jfObs')?.value||'';
+  if(!id||!just){ toast('Seleccione a justificação.','error'); return; }
+  await nq('UPDATE efectividade_registos SET justificada=true,obs=$1 WHERE id=$2',[just+' — '+obs,id]);
+  toast('✅ Falta justificada.','success');
+  closeModal('modalJustFalta');
+  loadFaltas();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACUMULADOS
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadAcumulados() {
+  const ano=document.getElementById('acumAno')?.value||2026;
+  const dist=document.getElementById('acumDist')?.value||'';
+  const wrap=document.getElementById('acumWrap'); if(!wrap) return;
+  setLoad(true,'A carregar acumulados...');
+
+  let rows=[];
+  try {
+    let sql=`SELECT fa.colaborador_id,col.nome,col.cargo,col.distrito,
+              ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`
+                COALESCE(MAX(CASE WHEN fa.mes=${m} THEN fa.dias_falta_nj END),0) as nj_${m},
+                COALESCE(MAX(CASE WHEN fa.mes=${m} THEN fa.dias_ferias END),0) as fer_${m}`).join(',')}
+              ,COALESCE(SUM(fa.dias_falta_nj),0) as fnj_total
+              ,COALESCE(SUM(fa.dias_ferias),0) as fer_total
+              ,COALESCE(SUM(fa.desconto_total),0) as desc_total
+             FROM falta_acumulados fa
+             LEFT JOIN colaboradores col ON col.id=fa.colaborador_id
+             WHERE fa.ano=$1 ${dist?` AND col.distrito='${dist}'`:''}
+             GROUP BY fa.colaborador_id,col.nome,col.cargo,col.distrito
+             ORDER BY fnj_total DESC, col.nome ASC`;
+    rows=await nq(sql,[ano])||[];
+  } catch(e){ console.warn(e); }
+
+  if(!rows.length){ wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--slate);">Sem dados de acumulados para este ano.<br><span style="font-size:11px;">Os acumulados são criados automaticamente ao registar presenças na Folha de Efectividades.</span></div>'; setLoad(false); return; }
+
+  const mesHdrs=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  wrap.innerHTML=`<div style="overflow-x:auto;"><table class="tbl">
+    <thead>
+      <tr>
+        <th rowspan="2">Colaborador</th><th rowspan="2">Distrito</th>
+        ${mesHdrs.map(m=>`<th colspan="2" style="text-align:center;">${m}</th>`).join('')}
+        <th colspan="3" rowspan="2" style="background:#1a3a6c;">ANUAL</th>
+      </tr>
+      <tr>${mesHdrs.map(()=>'<th style="font-size:9px;background:#1e3a8a;">FNJ</th><th style="font-size:9px;background:#1e3a8a;">Fér</th>').join('')}</tr>
+    </thead>
+    <tbody>${rows.map(r=>`<tr onclick="showColabDetalhe('c_${r.colaborador_id}')" style="cursor:pointer;">
+      <td style="font-weight:600;font-size:11px;">${r.nome}</td>
+      <td style="font-size:11px;">${r.distrito||'—'}</td>
+      ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
+        const fnj=parseFloat(r[`nj_${m}`])||0;
+        const fer=parseFloat(r[`fer_${m}`])||0;
+        return `<td style="text-align:center;color:${fnj>0?'#dc2626':'var(--slate)'};font-size:11px;">${fnj>0?fnj:''}</td>
+                <td style="text-align:center;color:${fer>0?'#1d4ed8':'var(--slate)'};font-size:11px;">${fer>0?fer:''}</td>`;
+      }).join('')}
+      <td style="text-align:center;font-weight:700;color:#dc2626;">${parseFloat(r.fnj_total)||0}</td>
+      <td style="text-align:center;font-weight:700;color:#1d4ed8;">${parseFloat(r.fer_total)||0}</td>
+      <td style="text-align:right;font-size:11px;">${parseFloat(r.desc_total)>0?fmt(r.desc_total)+' MZN':''}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+  setLoad(false);
+}
+
+async function exportAcumExcel() {
+  toast('A gerar Excel...','info');
+  // Uses XLSX library if available
+  if(typeof XLSX==='undefined'){ toast('Biblioteca XLSX não disponível.','error'); return; }
+  // Build data
+  const ano=document.getElementById('acumAno')?.value||2026;
+  toast('Excel ainda não implementado nesta versão.','warn');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COLABORADOR DETALHE
+// ═══════════════════════════════════════════════════════════════════════════
+async function showColabDetalhe(colId) {
+  const col=colaboradores.find(c=>c.id===colId);
+  if(!col) return;
+  showPage('colab-detalhe');
+  const wrap=document.getElementById('colabDetalheContent');
+  wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--slate);">⏳ A carregar...</div>';
+
+  const dbId=andaDbId(colId);
+  const ano=new Date().getFullYear();
+  const mes=new Date().getMonth()+1;
+
+  let saldo={direito:DIREITO_ANUAL,gozados:0,pendente:0,saldo:30,disponivel:30};
+  let ytd={diasFaltasNJ:0,diasFaltasJ:0,diasFerias:0,descontoTotal:0};
+  let faltasMes=[];
+  let planFerias=[];
+  let pvRow=null;
+
+  try {
+    const r1=await nq(`SELECT COALESCE(SUM(CASE WHEN estado='aprovado' THEN dias_uteis ELSE 0 END),0) as g,COALESCE(SUM(CASE WHEN estado='pendente' THEN dias_uteis ELSE 0 END),0) as p FROM plano_ferias WHERE colaborador_id=$1 AND ano=$2`,[dbId,ano]);
+    if(r1&&r1[0]){ saldo.gozados=parseInt(r1[0].g)||0; saldo.pendente=parseInt(r1[0].p)||0; saldo.saldo=Math.max(0,DIREITO_ANUAL-saldo.gozados); saldo.disponivel=Math.max(0,saldo.saldo-saldo.pendente); }
+
+    const r2=await nq(`SELECT COALESCE(SUM(dias_falta_nj),0) as fnj,COALESCE(SUM(dias_falta_j),0) as fj,COALESCE(SUM(dias_ferias),0) as fer,COALESCE(SUM(desconto_total),0) as desc FROM falta_acumulados WHERE colaborador_id=$1 AND ano=$2`,[dbId,ano]);
+    if(r2&&r2[0]){ ytd={diasFaltasNJ:parseFloat(r2[0].fnj)||0,diasFaltasJ:parseFloat(r2[0].fj)||0,diasFerias:parseFloat(r2[0].fer)||0,descontoTotal:parseFloat(r2[0].desc)||0}; }
+
+    faltasMes=await nq(`SELECT data,valor,justificada,obs FROM efectividade_registos WHERE colaborador_id=$1 AND presente=false AND EXTRACT(YEAR FROM data)=$2 ORDER BY data DESC LIMIT 10`,[dbId,ano])||[];
+    planFerias=await nq('SELECT * FROM plano_ferias WHERE colaborador_id=$1 ORDER BY data_inicio DESC LIMIT 8',[dbId])||[];
+    const pvR=await nq('SELECT * FROM prova_vida WHERE colaborador_id=$1',[dbId]);
+    pvRow=pvR&&pvR[0]?pvR[0]:null;
+  } catch(e) { console.warn(e); }
+
+  const risk=ytd.diasFaltasNJ>=10?'critico':ytd.diasFaltasNJ>=5?'alto':ytd.diasFaltasNJ>=3?'medio':'ok';
+  const riskColors={'critico':'#dc2626','alto':'#d97706','medio':'#ca8a04','ok':'#16a34a'};
+  const pct=Math.round((saldo.gozados/DIREITO_ANUAL)*100);
+
+  wrap.innerHTML=`
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <!-- SALDO FÉRIAS -->
+    <div class="saldo-big">
+      <div style="font-size:11px;opacity:.7;margin-bottom:4px;">SALDO DE FÉRIAS ${ano}</div>
+      <div class="sb-num">${saldo.disponivel}</div>
+      <div class="sb-lbl">dias disponíveis para gozar</div>
+      <div style="margin-top:10px;"><div style="height:6px;background:rgba(255,255,255,.2);border-radius:3px;"><div style="height:100%;width:${pct}%;background:${pct>90?'#fca5a5':'#86efac'};border-radius:3px;transition:.5s;"></div></div><div style="font-size:10px;opacity:.7;margin-top:3px;">${pct}% gozado</div></div>
+      <div class="sb-row">
+        <div class="sb-item"><strong>${DIREITO_ANUAL}</strong> Direito</div>
+        <div class="sb-item"><strong>${saldo.gozados}</strong> Gozados</div>
+        <div class="sb-item"><strong>${saldo.pendente}</strong> Pendente</div>
+        <div class="sb-item"><strong>${saldo.saldo}</strong> Saldo</div>
+      </div>
+    </div>
+    <!-- FALTAS YTD -->
+    <div style="background:white;border-radius:12px;border:1px solid var(--border);padding:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--slate);text-transform:uppercase;margin-bottom:12px;">Acumulados ${ano} · <span style="color:${riskColors[risk]};">${risk==='ok'?'✅ Sem risco':risk==='medio'?'🔶 Médio':risk==='alto'?'⚠️ Alto':'🚨 Crítico'}</span></div>
+      <div class="detail-row"><span class="dr-lbl">Faltas não justificadas</span><span class="dr-val" style="color:#dc2626;">${ytd.diasFaltasNJ} dias</span></div>
+      <div class="detail-row"><span class="dr-lbl">Faltas justificadas</span><span class="dr-val" style="color:#16a34a;">${ytd.diasFaltasJ} dias</span></div>
+      <div class="detail-row"><span class="dr-lbl">Dias de férias gozados</span><span class="dr-val" style="color:#1d4ed8;">${ytd.diasFerias} dias</span></div>
+      <div class="detail-row" style="border-top:2px solid var(--border);margin-top:6px;padding-top:8px;">
+        <span class="dr-lbl" style="font-weight:700;">Desconto Acumulado</span>
+        <span class="dr-val" style="color:#dc2626;">${fmt(ytd.descontoTotal)} MZN</span>
+      </div>
+      ${pvRow&&pvRow.salario_mzm?`<div class="detail-row"><span class="dr-lbl">Salário Base (PV)</span><span class="dr-val">${fmt(pvRow.salario_mzm)} MZN</span></div>`:''}
+    </div>
+  </div>
+
+  <!-- ALERTAS -->
+  ${ytd.diasFaltasNJ>=3?`<div class="alert ${risk}" style="margin-bottom:12px;"><span class="alert-icon">⚠️</span><div><strong>${ytd.diasFaltasNJ} faltas não justificadas</strong> em ${ano}. ${ytd.diasFaltasNJ>=10?'Risco disciplinar elevado.':ytd.diasFaltasNJ>=5?'Atenção requerida.':'Monitorizar.'}</div></div>`:''}
+  ${saldo.disponivel<=0&&saldo.saldo>0?`<div class="alert info" style="margin-bottom:12px;"><span class="alert-icon">🏖️</span><div>Tem <strong>${saldo.saldo} dias de férias por gozar</strong> — saldo vencido.</div></div>`:''}
+
+  <!-- PLANO FÉRIAS -->
+  <div class="sec-hdr" style="margin-top:0;">
+    <h2 style="font-size:13px;">🏖️ Plano de Férias</h2>
+    <button class="btn btn-sm btn-primary" style="margin-left:auto;" onclick="openNovoPedidoFor('${col.id}','${col.nome.replace(/'/g,"\\'")}')"><i class="ti ti-plus"></i> Novo Pedido</button>
+  </div>
+  ${planFerias.length?`<div class="tbl-wrap" style="margin-bottom:16px;"><table class="tbl"><thead><tr><th>Período</th><th>Dias Úteis</th><th>Tipo</th><th>Estado</th></tr></thead>
+  <tbody>${planFerias.map(f=>`<tr><td>${f.data_inicio?new Date(f.data_inicio).toLocaleDateString('pt-MZ'):'—'} → ${f.data_fim?new Date(f.data_fim).toLocaleDateString('pt-MZ'):'—'}</td><td style="text-align:center;font-weight:700;">${f.dias_uteis}</td><td style="font-size:11px;">${f.tipo||'—'}</td><td><span class="badge ${'aprovado'===f.estado?'b-aprovado':'pendente'===f.estado?'b-pendente':'b-rejeitado'}">${f.estado}</span></td></tr>`).join('')}
+  </tbody></table></div>`:
+  '<div style="color:var(--slate);font-size:12px;margin-bottom:16px;">Nenhum pedido de férias registado.</div>'}
+
+  <!-- ÚLTIMAS FALTAS -->
+  <div class="sec-hdr" style="margin-top:0;"><h2 style="font-size:13px;">❌ Últimas Faltas (${ano})</h2></div>
+  ${faltasMes.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Data</th><th>Tipo</th><th>Justificada</th><th>Obs</th></tr></thead>
+  <tbody>${faltasMes.map(f=>`<tr><td>${f.data?new Date(f.data).toLocaleDateString('pt-MZ'):'—'}</td><td>${f.valor||'—'}</td><td>${f.justificada?'<span class="badge b-aprovado">✅ Sim</span>':'<span class="badge b-rejeitado">❌ Não</span>'}</td><td style="font-size:11px;">${f.obs||''}</td></tr>`).join('')}
+  </tbody></table></div>`:
+  '<div style="color:var(--slate);font-size:12px;">Sem faltas registadas na base de dados.</div>'}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT EXCEL
+// ═══════════════════════════════════════════════════════════════════════════
+async function exportDashboardExcel() {
+  toast('Exportação Excel em desenvolvimento.','warn');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadAll() {
+  await loadColaboradores();
+  await loadDashboard();
+  const alertCount=await countAlertas();
+  document.getElementById('sbAlertCount').textContent=alertCount;
+}
+
+async function countAlertas() {
+  try {
+    const ano=new Date().getFullYear();
+    const r=await nq(`SELECT COUNT(DISTINCT colaborador_id) as cnt FROM falta_acumulados WHERE ano=$1 AND dias_falta_nj>=5`,[ano]);
+    return r&&r[0]?r[0].cnt:0;
+  } catch(e){ return 0; }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+  const saved=sessionStorage.getItem('anda_user');
+  if(!saved){ window.location.href='index.html'; return; }
+  try {
+    currentUser=JSON.parse(saved);
+    const rl={'admin':'Administrador','gestor':'Gestor','gestor_conta':'Gestor de Conta','viewer':'Visualizador'}[currentUser.role]||currentUser.role;
+    const topUser=document.getElementById('topbarUser');
+    if(topUser){
+      topUser.style.display='';
+      topUser.innerHTML=`<div style="font-weight:700;font-size:12px;">${currentUser.nome||currentUser.username}</div><div style="font-size:10px;opacity:.7;">${rl}${currentUser.distrito?' · '+currentUser.distrito:''}</div>`;
+    }
+    // Restrict district for gestor
+    if(currentUser.role==='gestor'||currentUser.role==='gestor_conta'){
+      const dists=currentUser.distrito?currentUser.distrito.split(',').map(d=>d.trim()):[];
+      if(dists.length>0){
+        ['dashDist','pfDist','calDist','faltaDist','acumDist'].forEach(id=>{
+          const el=document.getElementById(id); if(!el) return;
+          el.value=dists[0];
+          Array.from(el.options).forEach(o=>{ if(o.value&&!dists.includes(o.value)) o.style.display='none'; });
+        });
+      }
+    }
+    // Set current month
+    const now=new Date();
+    const dashMes=document.getElementById('dashMes');
+    if(dashMes) dashMes.value=now.getMonth()+1;
+  } catch(e){ window.location.href='index.html'; return; }
+
+  await loadAll();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAPA DE FÉRIAS VISUAL
+// ═══════════════════════════════════════════════════════════════════════════
+const MAPA_FERIADOS = {
+  '2026': ['2026-01-01','2026-04-07','2026-04-18','2026-05-01','2026-06-25',
+           '2026-09-07','2026-09-25','2026-10-04','2026-11-10','2026-12-25'],
+  '2025': ['2025-01-01','2025-04-07','2025-04-18','2025-05-01','2025-06-25',
+           '2025-09-07','2025-09-25','2025-10-04','2025-11-10','2025-12-25'],
+};
+
+const MAPA_CODE_CLASS = {
+  '1':'presente','H':'presente','V':'ferias','MP':'mp',
+  'E':'falta-j','F':'feriado','P':'falta-j',
+  'SL':'licenca','SS':'suspensao','AP':'falta-j','O':'falta-nj'
+};
+const MAPA_CODE_LABEL = {
+  '1':'P','H':'H','V':'V','MP':'MP','E':'E','F':'F',
+  'P':'P','SL':'SL','SS':'SS','AP':'AP','O':'F'
+};
+
+async function renderMapaFerias() {
+  const ano    = parseInt(document.getElementById('mapaAno')?.value  || new Date().getFullYear());
+  const dist   = document.getElementById('mapaDist')?.value  || '';
+  const grupo  = document.getElementById('mapaGrupo')?.value || '';
+  const vista  = document.getElementById('mapaVista')?.value || 'anual';
+  const wrap   = document.getElementById('mapaWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--slate);">⏳ A gerar mapa...</div>';
+
+  // Filter colaboradores
+  let cols = colaboradores.filter(function(c){ return !c._inactive; });
+  if (dist)  cols = cols.filter(function(c){ return c.distrito === dist; });
+  if (grupo) cols = cols.filter(function(c){ return (c.tipo||'') === grupo; });
+
+  if (!cols.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--slate);">Nenhum colaborador encontrado com os filtros seleccionados.</div>';
+    return;
+  }
+
+  // Load attendance from efectividade_registos for the full year
+  let attMap = {}; // dbId → { 'YYYY-MM-DD': {val, justificada} }
+  try {
+    const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
+    if (dbIds.length > 0) {
+      const rows = await nq(
+        `SELECT colaborador_id, data, valor, justificada, presente
+         FROM efectividade_registos
+         WHERE EXTRACT(YEAR FROM data)=$1
+         AND colaborador_id = ANY($2::int[])
+         ORDER BY data ASC`,
+        [ano, dbIds]
+      ) || [];
+      rows.forEach(function(r){
+        if (!attMap[r.colaborador_id]) attMap[r.colaborador_id] = {};
+        attMap[r.colaborador_id][r.data.slice(0,10)] = { val: r.valor || (r.presente?'1':'O'), just: r.justificada };
+      });
+    }
+  } catch(e) { console.warn('[Mapa] attendance load:', e.message); }
+
+  // Load plano_ferias (approved)
+  let ferMap = {}; // dbId → Set of date strings
+  try {
+    const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
+    const pfRows = await nq(
+      `SELECT colaborador_id, data_inicio, data_fim FROM plano_ferias
+       WHERE estado='aprovado' AND ano=$1
+       AND colaborador_id = ANY($2::int[])`, [ano, dbIds]
+    ) || [];
+    pfRows.forEach(function(f){
+      if (!ferMap[f.colaborador_id]) ferMap[f.colaborador_id] = new Set();
+      let d = new Date(f.data_inicio);
+      const end = new Date(f.data_fim);
+      while (d <= end) {
+        ferMap[f.colaborador_id].add(d.toISOString().slice(0,10));
+        d.setDate(d.getDate()+1);
+      }
+    });
+  } catch(e) {}
+
+  const FERIADOS_SET = new Set(MAPA_FERIADOS[String(ano)] || []);
+  const MESES_SHORT  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // Determine months to show
+  const mesesRange = vista === 'mensal'
+    ? [new Date().getMonth()] // current month only
+    : [0,1,2,3,4,5,6,7,8,9,10,11];
+
+  // Build days per month
+  const monthDays = mesesRange.map(function(m){
+    const n = new Date(ano, m+1, 0).getDate();
+    const days = [];
+    for (let d=1; d<=n; d++) days.push(d);
+    return { m, name: MESES_SHORT[m], days };
+  });
+
+  // Group cols by distrito for visual grouping
+  const byDist = {};
+  cols.forEach(function(col){
+    const d = col.distrito || 'Outros';
+    if (!byDist[d]) byDist[d] = [];
+    byDist[d].push(col);
+  });
+
+  // ── Build HTML table ──────────────────────────────────────────────────
+  let html = '<table class="mapa-table">';
+
+  // Row 1: Month headers
+  html += '<thead><tr>';
+  html += '<th class="mapa-th-nome" rowspan="2">Colaborador</th>';
+  monthDays.forEach(function(md, mi){
+    html += '<th class="mapa-th-mes mapa-mes-sep" colspan="'+md.days.length+'">'+md.name+'</th>';
+  });
+  html += '</tr>';
+
+  // Row 2: Day numbers
+  html += '<tr>';
+  monthDays.forEach(function(md){
+    md.days.forEach(function(d){
+      const dow = new Date(ano, md.m, d).getDay();
+      const ds = ano+'-'+String(md.m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const isWk  = dow === 0 || dow === 6;
+      const isFer = FERIADOS_SET.has(ds);
+      const cls = (isWk ? ' weekend' : '') + (isFer ? ' feriado' : '');
+      html += '<th class="mapa-th-dia'+cls+'" title="'+MESES_SHORT[md.m]+' '+d+'">'
+        + (d === 1 || d % 5 === 0 ? d : '')+'</th>';
+    });
+  });
+  html += '</tr></thead><tbody>';
+
+  // Data rows grouped by distrito
+  Object.keys(byDist).sort().forEach(function(distNome){
+    // District group header
+    html += '<tr class="mapa-grupo-hdr"><td colspan="'+(1+monthDays.reduce(function(s,md){ return s+md.days.length; },0))+'">📍 '+distNome+'</td></tr>';
+
+    byDist[distNome].forEach(function(col){
+      const dbId = andaDbId(col.id);
+      const colAtt  = attMap[dbId] || {};
+      const colFer  = ferMap[dbId]  || new Set();
+
+      html += '<tr>';
+      html += '<td class="mapa-nome-cell" onclick="showColabDetalhe('+JSON.stringify(col.id)+')" title="Ver detalhe de '+col.nome+'">'
+        + col.nome
+        + '<br><span style="font-size:9px;color:var(--slate);font-weight:400;">'+col.cargo+'</span></td>';
+
+      monthDays.forEach(function(md){
+        md.days.forEach(function(d){
+          const dow = new Date(ano, md.m, d).getDay();
+          const ds  = ano+'-'+String(md.m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+          const isWk  = dow === 0 || dow === 6;
+          const isFer = FERIADOS_SET.has(ds);
+
+          if (isWk)  { html += '<td class="mapa-day weekend"></td>'; return; }
+          if (isFer) { html += '<td class="mapa-day feriado" title="Feriado">F</td>'; return; }
+
+          // Priority: approved férias plan > attendance record
+          if (colFer.has(ds)) {
+            html += '<td class="mapa-day ferias" title="F\u00e9rias aprovadas" onclick="openNovoPedidoFor('+JSON.stringify(col.id)+','+JSON.stringify(col.nome)+')">V</td>';
+            return;
+          }
+
+          const att = colAtt[ds];
+          if (!att) {
+            html += '<td class="mapa-day empty" title="'+ds+'" onclick="showDayEdit('+JSON.stringify(col.id)+','+JSON.stringify(ds)+','+JSON.stringify(col.nome)+')"></td>';
+            return;
+          }
+
+          const val  = att.val || '';
+          const just = att.just;
+          const cls  = MAPA_CODE_CLASS[val] || (just ? 'falta-j' : 'falta-nj');
+          const lbl  = MAPA_CODE_LABEL[val] || val.slice(0,2) || '?';
+          html += '<td class="mapa-day '+cls+'" title="'+val+(just?' (justificada)':'')+' — '+ds+'" onclick="showDayEdit('+JSON.stringify(col.id)+','+JSON.stringify(ds)+','+JSON.stringify(col.nome)+')">'+lbl+'</td>';
+        });
+      });
+
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table>';
+  html += '<div class="mapa-legend">'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#dcfce7;"></div> Presente (P)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#bfdbfe;"></div> Férias (V)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fecaca;"></div> Falta NJ (O)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fef3c7;"></div> Falta Just. (E/P)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#e9d5ff;"></div> Licença (SL)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fee2e2;"></div> Suspensão (SS)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fbcfe8;"></div> Maternidade (MP)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#d1fae5;"></div> Feriado (F)</div>'
+    + '</div>';
+
+  wrap.innerHTML = html;
+}
+
+// Day edit modal (quick register from mapa)
+let _dayEditColId = null, _dayEditDate = null;
+function showDayEdit(colId, date, nome) {
+  _dayEditColId = colId;
+  _dayEditDate  = date;
+  const d = new Date(date).toLocaleDateString('pt-MZ');
+  const msg = `Registar para ${nome} em ${d}:\n\n`
+    + '1=Presente | V=Férias | O=Falta NJ | E=Falta Just.\n'
+    + 'MP=Maternidade | SL=Licença | SS=Suspensão | F=Feriado\n\n'
+    + 'Código (ou Enter para cancelar):';
+  const choice = prompt(msg, '');
+  if (!choice || !choice.trim()) return;
+  const val = choice.trim().toUpperCase();
+  saveDayFromMapa(colId, date, val);
+}
+
+async function saveDayFromMapa(colId, date, val) {
+  const dbId = andaDbId(colId);
+  if (!dbId) return;
+  const presente = !['O','SL','SS'].includes(val);
+  const just     = ['E','F','MP','P','SL'].includes(val);
+  try {
+    await nq(
+      `INSERT INTO efectividade_registos (colaborador_id, data, valor, presente, justificada, criado_em)
+       VALUES ($1,$2,$3,$4,$5,NOW())
+       ON CONFLICT (colaborador_id, data)
+       DO UPDATE SET valor=$3, presente=$4, justificada=$5, actualizado_em=NOW()`,
+      [dbId, date, val, presente, just]
+    );
+    toast('✅ Registado: '+val+' em '+date, 'success');
+    // Auto-update falta_acumulados
+    const m = parseInt(date.slice(5,7));
+    const a = parseInt(date.slice(0,4));
+    const stat = { diasTrabalhados:0, diasFerias:val==='V'?1:0, diasFaltasNJ:(!just&&!presente)?1:0, diasFaltasJ:(just&&!presente)?1:0, diasLicenca:val==='SL'?1:0, diasSuspensao:val==='SS'?1:0 };
+    await ffeSaveAcumulados(colId, m, a, stat, 0);
+    renderMapaFerias();
+  } catch(e) { toast('Erro ao guardar: '+e.message, 'error'); }
+}
+
+async function exportMapaExcel() {
+  toast('A preparar exportação Excel do mapa...', 'info');
+  // Simplified: open printable version
+  window.print();
+}
+
+// Wire into showPage
+const _origShowPage = showPage;
+function showPage(page) {
+  _origShowPage(page);
+  if (page === 'mapa-ferias') {
+    // Delay to let DOM render
+    setTimeout(renderMapaFerias, 100);
+  }
+}
+</script>
+
+</body>
+</html>
