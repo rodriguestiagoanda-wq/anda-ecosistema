@@ -884,7 +884,7 @@ const WORKER_URL = 'https://anda-neon.rodriguestiago-anda.workers.dev';
 async function neonQuery(sql, params) {
   params = params || [];
   try {
-    const res = await fetch(WORKER_URL, {
+    const _ctrl = new AbortController(); setTimeout(() => _ctrl.abort(), 15000); const res = await fetch(WORKER_URL, { signal: _ctrl.signal,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sql: sql, params: params })
