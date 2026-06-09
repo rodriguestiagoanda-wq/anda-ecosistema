@@ -6,7 +6,7 @@
 <title>ANDA · Plano de Férias & Gestão de Faltas</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/hnpm/@tabler/icons-webfont@3.11.0/tabler-icons.min.css">
 <style>
-/* ── Reset & Base ─────────────────────────────────────────────────────── */
+/* ── Reset & Base ───────────────────────────────────h──────────────────── */
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --navy:#0f1f3d;--blue:#1d4ed8;--teal:#0f766e;--violet:#7c3aed;
@@ -1268,7 +1268,7 @@ function diasUteis(start, end) {
 // ── Load colaboradores ────────────────────────────────────────────────────
 async function loadColaboradores() {
   try {
-    const rows = await nq('SELECT id,nome,cargo,tipo,distrito,activo,estado FROM colaboradores WHERE activo=true ORDER BY nome ASC',[]);
+    const rows = await nq('SELECT id,nome,cargo,tipo,distrito,activo FROM colaboradores WHERE activo=true ORDER BY nome ASC',[]);
     if(rows&&rows.length) {
       colaboradores = rows.map(r=>({id:'c_'+r.id,_dbId:r.id,nome:r.nome,cargo:r.cargo,tipo:r.tipo,distrito:r.distrito,_table:'colaboradores'}));
     } else {
