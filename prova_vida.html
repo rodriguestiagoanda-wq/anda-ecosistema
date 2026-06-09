@@ -891,7 +891,7 @@ async function loadData() {
 
   // STEP 2: load from DB — load ALL (activo e inactivo) so filter works
   try {
-    const rows = await nq('SELECT id, nome, cargo, tipo, distrito, activo, activo_desde, inactivo_desde FROM colaboradores ORDER BY nome ASC', []);
+    const rows = await nq('SELECT id, nome, cargo, tipo, distrito, activo FROM colaboradores ORDER BY nome ASC', []);
     if (rows && rows.length > 0) {
       colaboradores = rows.map(r => ({
         id: 'c_' + r.id,
