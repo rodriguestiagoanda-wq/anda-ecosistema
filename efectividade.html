@@ -1391,7 +1391,7 @@ function setAttendance(id, day, val, justificada) {
   if (!attendance[id]) attendance[id] = {};
   attendance[id][day] = { val: val, justificada: justificada };
   saveAttendanceRecord(id, day, val, justificada);
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
 function isFalta(val) { return FALTAS_SIGLAS.includes(val); }
@@ -1929,7 +1929,7 @@ async function confirmAdd() {
   logAction('add', 'Colaborador adicionado: ' + nome + ' | ' + cargo + ' | ' + distrito);
   showToast('✅ ' + nome + ' adicionado com sucesso!', 'success');
   closeModal();
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
 function removeColaborador(id) {
@@ -1955,10 +1955,10 @@ async function onMonthChange() {
   // Only fill defaults for days with NO saved data — never overwrite DB records
   initDemoData();
   hideLoadingOverlay();
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
-function applyFilters() { try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet(); }
+function applyFilters() { buildSheet(); }
 
 function populateSupervisores() {
   const sel = document.getElementById('supervisor');
@@ -2141,7 +2141,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
     hideLoadingOverlay();
     initDemoData();
-    try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+    buildSheet();
     // Re-run after everything loads to ensure admin unlock button shows correctly
     checkMesBloqueado();
   })();
@@ -2491,7 +2491,7 @@ async function toggleMes(mes, ano, isLocked) {
   await renderGestaoMeses();
   // Refresh current month lock status in main sheet
   await checkMesBloqueado();
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
 async function lockMesFromGestao() {
@@ -2562,7 +2562,7 @@ async function archiveColaborador(id) {
 
   logAction('remove', 'Colaborador arquivado: ' + col.nome + ' (' + col.cargo + ' · ' + col.distrito + ')');
   showToast('🗄️ ' + col.nome + ' arquivado com sucesso.', 'info');
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
 async function restoreColaborador(archiveDbId) {
@@ -2592,7 +2592,7 @@ async function restoreColaborador(archiveDbId) {
 
   logAction('add', 'Colaborador restaurado: ' + item.nome);
   showToast('✅ ' + item.nome + ' restaurado com sucesso!', 'success');
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
   renderArchive();
 }
 
@@ -2752,7 +2752,7 @@ async function lockMes() {
   showToast('📬 Folha de ' + mesNome + ' ' + ano + ' entregue e fechada!', 'info');
   hideLoadingOverlay();
   await checkMesBloqueado();
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
 async function unlockMes() {
@@ -2769,7 +2769,7 @@ async function unlockMes() {
   showToast('↩️ Folha de ' + mesNome + ' ' + ano + ' devolvida para correcção!', 'success');
   hideLoadingOverlay();
   await checkMesBloqueado();
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
 async function prefillAllPresent() {
@@ -2818,7 +2818,7 @@ async function prefillAllPresent() {
   logAction('edit', 'Pré-preenchimento ' + mesNome + ' ' + ano + ': ' + count + ' dias para ' + filtered.length + ' colaboradores');
   hideLoadingOverlay();
   showToast('✅ ' + count + ' dias preenchidos com Presente!', 'success');
-  try{await neonQuery('UPDATE prova_vida SET nome=$1,cargo=$2,tipo=$3,distrito=$4 WHERE colaborador_id=$5',[col.nome,col.cargo,col.tipo,col.distrito,dbId]);}catch(e){console.warn('pv sync',e);}buildSheet();
+  buildSheet();
 }
 
 // ===== SUPABASE DATA LAYER =====
