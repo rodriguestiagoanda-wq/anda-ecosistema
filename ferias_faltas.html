@@ -2308,7 +2308,7 @@ async function renderMapaFerias() {
 
           const att = colAtt[ds];
           if (!att) {
-            html += '<td class="mapa-day empty" title="'+ds+'" onclick="showDayEdit('+JSON.stringify(col.id)+','+JSON.stringify(ds)+','+JSON.stringify(col.nome)+')"></td>';
+            html += '<td class="mapa-day empty" title="'+ds+'" onclick="showDayEdit('"+col.id+"','"+ds+"','"+col.nome+"')"></td>';
             return;
           }
 
@@ -2316,7 +2316,7 @@ async function renderMapaFerias() {
           const just = att.just;
           const cls  = MAPA_CODE_CLASS[val] || (just ? 'falta-j' : 'falta-nj');
           const lbl  = MAPA_CODE_LABEL[val] || val.slice(0,2) || '?';
-          html += '<td class="mapa-day '+cls+'" title="'+val+(just?' (justificada)':'')+' — '+ds+'" onclick="showDayEdit('+JSON.stringify(col.id)+','+JSON.stringify(ds)+','+JSON.stringify(col.nome)+')">'+lbl+'</td>';
+          html += '<td class="mapa-day '+cls+'" title="'+val+(just?' (justificada)':'')+' — '+ds+'" onclick="showDayEdit('"+col.id+"','"+ds+"','"+col.nome+"')">'+lbl+'</td>';
         });
       });
 
