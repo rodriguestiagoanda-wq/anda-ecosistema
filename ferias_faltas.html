@@ -2173,96 +2173,62 @@ async function renderMapaFerias() {
   const vista  = document.getElementById('mapaVista')?.value || 'anual';
   const wrap   = document.getElementById('mapaWrap');
   if (!wrap) return;
-  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--slate);">⏳ A gerar mapa de férias...</div>';
+  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--slate);">&#9203; A gerar mapa de f&#233;rias...</div>';
 
-  // Filter colaboradores
   let cols = colaboradores.filter(function(c){ return !c._inactive; });
   if (dist)  cols = cols.filter(function(c){ return c.distrito === dist; });
   if (grupo) cols = cols.filter(function(c){ return (c.tipo||c.cargo||'') === grupo; });
   if (!cols.length) { wrap.innerHTML = '<p style="padding:20px;color:var(--slate);">Sem colaboradores para mostrar.</p>'; return; }
 
-  // 1. Load falta_acumulados → sum dias_ferias per worker
-  let acumMap = {}; // dbId → { diasFerias, horasAcum }
-  try {
-    const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
-    const acumRows = await nq(
-      'SELECT colaborador_id, COALESCE(SUM(dias_ferias),0) AS total_ferias FROM falta_acumulados WHERE ano=$1 AND colaborador_id = ANY($2::int[]) GROUP BY colaborador_id',
-      [ano, dbIds]
-    ) || [];
-    acumRows.forEach(function(r) {
-      acumMap[r.colaborador_id] = { diasFerias: parseFloat(r.total_ferias) || 0, extrasHoras: 0 };
-    });
-  } catch(e) { console.warn('[Mapa] acumMap load:', e.message); }
+  const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
 
-  // 2. Load H (horas) entries from efectividade_registos → add extra days (8h=1day)
+  // 1. Load total hours (H:X entries) per worker from efectividade_registos
+  //    Each 8 hours = 1 vacation day available
+  let horasMap = {}; // dbId -> total hours accumulated
   try {
-    const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
     const hRows = await nq(
-      'SELECT colaborador_id, valor FROM efectividade_registos WHERE ano_ref=$1 AND valor LIKE 'H%' AND colaborador_id = ANY($2::int[])',
+      "SELECT colaborador_id, valor FROM efectividade_registos WHERE EXTRACT(YEAR FROM data)=$1 AND valor LIKE 'H%' AND colaborador_id = ANY($2::int[])",
       [ano, dbIds]
     ) || [];
-    const horasMap = {};
     hRows.forEach(function(r) {
-      const id = r.colaborador_id;
-      const hrs = parseFloat(String(r.valor).replace('H','')) || 0;
-      if (!horasMap[id]) horasMap[id] = 0;
-      horasMap[id] += hrs;
-    });
-    Object.keys(horasMap).forEach(function(id) {
-      const extraDias = Math.floor(horasMap[id] / 8);
-      if (!acumMap[id]) acumMap[id] = { diasFerias: 0, extrasHoras: 0 };
-      acumMap[id].extrasHoras = extraDias;
+      const id = String(r.colaborador_id);
+      // valor format: "H:8" or "H:7" etc
+      const hrs = parseFloat(String(r.valor).replace('H:','').replace('H','')) || 0;
+      horasMap[id] = (horasMap[id] || 0) + hrs;
     });
   } catch(e) { console.warn('[Mapa] horas load:', e.message); }
 
-  // 3. Load plano_ferias for all workers (any state) → get planned dates
-  let planMap = {}; // dbId → Set of date strings
+  // 2. Load planned vacation days from plano_ferias (all states)
+  //    Each row may have data_inicio to data_fim range OR a single day (data_inicio=data_fim)
+  let planMap = {}; // dbId -> Set of date strings
   try {
-    const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
     const pfRows = await nq(
-      'SELECT colaborador_id, data FROM plano_ferias_dias WHERE ano=$1 AND colaborador_id = ANY($2::int[])',
+      'SELECT colaborador_id, data_inicio, data_fim FROM plano_ferias WHERE ano=$1 AND colaborador_id = ANY($2::int[])',
       [ano, dbIds]
     ) || [];
-    pfRows.forEach(function(r) {
-      const id = String(r.colaborador_id);
+    pfRows.forEach(function(f) {
+      const id = String(f.colaborador_id);
       if (!planMap[id]) planMap[id] = new Set();
-      planMap[id].add(r.data.slice(0,10));
+      let d = new Date(f.data_inicio);
+      const end = new Date(f.data_fim);
+      // Expand date range into individual days
+      while (d <= end) {
+        planMap[id].add(d.toISOString().slice(0,10));
+        d.setDate(d.getDate()+1);
+      }
     });
-  } catch(e) {
-    // Fallback: try plano_ferias with date ranges
-    try {
-      const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
-      const pfRows = await nq(
-        'SELECT colaborador_id, data_inicio, data_fim FROM plano_ferias WHERE ano=$1 AND colaborador_id = ANY($2::int[])',
-        [ano, dbIds]
-      ) || [];
-      pfRows.forEach(function(f) {
-        const id = String(f.colaborador_id);
-        if (!planMap[id]) planMap[id] = new Set();
-        let d = new Date(f.data_inicio);
-        const end = new Date(f.data_fim);
-        while (d <= end) { planMap[id].add(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
-      });
-    } catch(e2) { console.warn('[Mapa] planMap fallback:', e2.message); }
-  }
+  } catch(e) { console.warn('[Mapa] planMap load:', e.message); }
 
   const FERIADOS_SET = new Set(MAPA_FERIADOS[String(ano)] || []);
   const MESES_SHORT  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-  // Determine months to show
-  const mesesRange = vista === 'mensal'
-    ? [new Date().getMonth()]
-    : [0,1,2,3,4,5,6,7,8,9,10,11];
-
-  // Build days per month
-  const monthDays = mesesRange.map(function(m){
+  const mesesRange   = vista === 'mensal' ? [new Date().getMonth()] : [0,1,2,3,4,5,6,7,8,9,10,11];
+  const monthDays    = mesesRange.map(function(m){
     const n = new Date(ano, m+1, 0).getDate();
     const days = [];
     for (let d=1; d<=n; d++) days.push(d);
     return { m, name: MESES_SHORT[m], days };
   });
 
-  // Group cols by distrito
   const byDist = {};
   cols.forEach(function(col){
     const d = col.distrito || 'Outros';
@@ -2270,62 +2236,61 @@ async function renderMapaFerias() {
     byDist[d].push(col);
   });
 
-  // ── Build HTML table ──────────────────────────────────────────────────
   const totalDayCols = monthDays.reduce(function(s,md){ return s+md.days.length; }, 0);
+
   let html = '<style>';
-  html += '.mapa-day-fer{background:#1e293b;cursor:pointer;transition:background .15s;}';
-  html += '.mapa-day-fer:hover{background:#334155;}';
-  html += '.mapa-day-emp{background:#fff;cursor:pointer;}';
-  html += '.mapa-day-emp:hover{background:#e0f2fe;}';
-  html += '.mapa-day-wk{background:#f1f5f9;cursor:default;}';
-  html += '.mapa-day-fh{background:#fef9c3;cursor:default;font-size:9px;text-align:center;color:#92400e;}';
-  html += '.mapa-saldo{font-size:9px;font-weight:600;padding:1px 4px;border-radius:4px;margin-left:4px;}';
-  html += '.mapa-saldo-ok{background:#dcfce7;color:#166534;}';
-  html += '.mapa-saldo-over{background:#fee2e2;color:#991b1b;}';
+  html += '.mf-fer{background:#1e293b !important;cursor:pointer;}';
+  html += '.mf-fer:hover{background:#334155 !important;}';
+  html += '.mf-emp{background:#fff;cursor:pointer;}';
+  html += '.mf-emp:hover{background:#e0f2fe;}';
+  html += '.mf-wk{background:#f1f5f9;cursor:default;pointer-events:none;}';
+  html += '.mf-fh{background:#fef9c3;cursor:default;pointer-events:none;font-size:9px;text-align:center;color:#92400e;}';
+  html += '.mf-lock{background:#f9fafb;cursor:not-allowed;pointer-events:none;}';
+  html += '.mf-saldo{display:inline-block;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle;}';
+  html += '.mf-ok{background:#dcfce7;color:#166534;}';
+  html += '.mf-over{background:#fee2e2;color:#991b1b;}';
+  html += '.mf-zero{background:#f3f4f6;color:#6b7280;}';
   html += '</style>';
   html += '<table class="mapa-table">';
-
-  // Row 1: Month headers
   html += '<thead><tr>';
-  html += '<th class="mapa-th-nome" rowspan="2">Colaborador<br><span style="font-weight:400;font-size:9px;opacity:.7">Usados / Disponíveis</span></th>';
+  html += '<th class="mapa-th-nome" rowspan="2">Colaborador<br><span style="font-weight:400;font-size:9px;color:#94a3b8">Usado / Disp&#237;veis</span></th>';
   monthDays.forEach(function(md){
     html += '<th class="mapa-th-mes mapa-mes-sep" colspan="'+md.days.length+'">'+md.name+'</th>';
   });
-  html += '</tr>';
-
-  // Row 2: Day numbers
-  html += '<tr>';
+  html += '</tr><tr>';
   monthDays.forEach(function(md){
     md.days.forEach(function(d){
       const dow = new Date(ano, md.m, d).getDay();
       const ds  = ano+'-'+String(md.m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
       const isWk  = dow === 0 || dow === 6;
       const isFer = FERIADOS_SET.has(ds);
-      const cls = (isWk ? ' weekend' : '') + (isFer ? ' feriado' : '');
-      html += '<th class="mapa-th-dia'+cls+'" title="'+MESES_SHORT[md.m]+' '+d+'">'
-        + (d === 1 || d % 5 === 0 ? d : '')+'</th>';
+      const cls   = 'mapa-th-dia'+(isWk?' weekend':'')+(isFer?' feriado':'');
+      html += '<th class="'+cls+'" title="'+MESES_SHORT[md.m]+' '+d+'">'
+        + (d===1||d%5===0 ? d : '')+'</th>';
     });
   });
   html += '</tr></thead><tbody>';
 
-  // Data rows grouped by distrito
   Object.keys(byDist).sort().forEach(function(distNome){
-    html += '<tr class="mapa-grupo-hdr"><td colspan="'+(1+totalDayCols)+'">📍 '+distNome+'</td></tr>';
+    html += '<tr class="mapa-grupo-hdr"><td colspan="'+(1+totalDayCols)+'">&#128205; '+distNome+'</td></tr>';
 
     byDist[distNome].forEach(function(col){
       const dbId    = andaDbId(col.id);
-      const acum    = acumMap[String(dbId)] || { diasFerias: 0, extrasHoras: 0 };
-      const totalDisp = (acum.diasFerias || 0) + (acum.extrasHoras || 0);
-      const colPlan = planMap[String(dbId)] || new Set();
-      const usados  = colPlan.size;
-      const saldoClass = usados > totalDisp ? 'mapa-saldo-over' : 'mapa-saldo-ok';
-      const saldoTxt  = usados+'/'+totalDisp;
+      const dbIdStr = String(dbId);
+      const totalHrs  = horasMap[dbIdStr] || 0;
+      const totalDisp = Math.floor(totalHrs / 8); // 8hrs = 1 vacation day
+      const colPlan   = planMap[dbIdStr] || new Set();
+      const usados    = colPlan.size;
+      const disponivel = Math.max(0, totalDisp - usados);
+
+      let saldoClass = 'mf-zero';
+      if (totalDisp > 0) saldoClass = usados > totalDisp ? 'mf-over' : 'mf-ok';
 
       html += '<tr>';
-      html += '<td class="mapa-nome-cell" title="'+col.nome+' — '+col.cargo+'">'
+      html += '<td class="mapa-nome-cell" title="'+col.nome+'">'
         + col.nome
         + '<br><span style="font-size:9px;color:var(--slate);font-weight:400;">'+col.cargo+'</span>'
-        + '<span class="mapa-saldo '+saldoClass+'">'+saldoTxt+'</span></td>';
+        + '<span class="mf-saldo '+saldoClass+'">'+usados+'/'+totalDisp+'</span></td>';
 
       monthDays.forEach(function(md){
         md.days.forEach(function(d){
@@ -2334,93 +2299,69 @@ async function renderMapaFerias() {
           const isWk  = dow === 0 || dow === 6;
           const isFer = FERIADOS_SET.has(ds);
 
-          if (isWk)  { html += '<td class="mapa-day mapa-day-wk" title="Fim de semana"></td>'; return; }
-          if (isFer) { html += '<td class="mapa-day mapa-day-fh" title="Feriado">F</td>'; return; }
+          if (isWk)  { html += '<td class="mapa-day mf-wk"></td>'; return; }
+          if (isFer) { html += '<td class="mapa-day mf-fh" title="Feriado">F</td>'; return; }
 
           if (colPlan.has(ds)) {
-            html += '<td class="mapa-day mapa-day-fer" title="Férias planeadas: '+ds+'" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'')"></td>';
+            // Planned vacation day → black, click to remove
+            html += '<td class="mapa-day mf-fer" title="F&#233;rias: '+ds+' (clique para remover)" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'',true)"></td>';
+          } else if (disponivel <= 0 && totalDisp > 0) {
+            // No days left → locked
+            html += '<td class="mapa-day mf-lock" title="Sem dias dispon&#237;veis ('+usados+'/'+totalDisp+')"></td>';
           } else {
-            if (usados >= totalDisp && totalDisp > 0) {
-              // Limit reached: show as locked (no click)
-              html += '<td class="mapa-day mapa-day-emp" style="background:#f9fafb;cursor:not-allowed;" title="Sem dias disponíveis ('+usados+'/'+totalDisp+')"></td>';
-            } else {
-              html += '<td class="mapa-day mapa-day-emp" title="Clique para marcar férias: '+ds+'" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'')"></td>';
-            }
+            // Available slot → click to mark
+            html += '<td class="mapa-day mf-emp" title="Clique para marcar f&#233;rias: '+ds+'" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'',false)"></td>';
           }
         });
       });
-
       html += '</tr>';
     });
   });
 
   html += '</tbody></table>';
-  html += '<div class="mapa-legend">'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#1e293b;"></div> Férias planeadas</div>'
+  html += '<div class="mapa-legend" style="margin-top:8px;">'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#1e293b;"></div> F&#233;rias planeadas</div>'
     + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#f1f5f9;border:1px solid #e2e8f0;"></div> Fim de semana</div>'
     + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fef9c3;border:1px solid #fde68a;"></div> Feriado</div>'
-    + '<div class="mapa-legend-item" style="font-size:10px;color:var(--slate);">Clique numa célula para marcar/desmarcar dias de férias</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#f9fafb;border:1px solid #e5e7eb;"></div> Sem dias dispon&#237;veis</div>'
+    + '<div class="mapa-legend-item" style="font-size:10px;color:var(--slate);">Contador: dias usados / dias dispon&#237;veis (8h = 1 dia de f&#233;rias)</div>'
     + '</div>';
 
   wrap.innerHTML = html;
 }
 
-// Toggle a vacation day directly in the map
-async function toggleFeriasDay(colId, dbId, date, nome) {
+// Toggle vacation day: add or remove from plano_ferias
+async function toggleFeriasDay(colId, dbId, date, nome, isRemoving) {
   if (!dbId) { toast('Colaborador sem ID na BD.', 'error'); return; }
   const ano = parseInt(date.slice(0,4));
-
-  // Check if this day is already planned (read from DOM via cell class)
-  const cell = event && event.target ? event.target : null;
-  const isCurrentlyFer = cell && cell.classList.contains('mapa-day-fer');
-
   try {
-    if (isCurrentlyFer) {
-      // Remove the vacation day
+    if (isRemoving) {
+      // Remove: delete the plano_ferias record where data_inicio=data_fim=date
       await nq(
-        'DELETE FROM plano_ferias_dias WHERE colaborador_id=$1 AND data=$2 AND ano=$3',
+        'DELETE FROM plano_ferias WHERE colaborador_id=$1 AND data_inicio=$2 AND data_fim=$2 AND ano=$3',
         [dbId, date, ano]
       );
-      toast('✅ Dia '+date+' removido das férias de '+nome, 'success');
+      toast('Dia '+date+' removido das f&#233;rias de '+nome, 'success');
     } else {
-      // Add the vacation day
+      // Add: insert a single-day vacation record
       await nq(
-        'INSERT INTO plano_ferias_dias (colaborador_id, data, ano, criado_em) VALUES ($1,$2,$3,NOW()) ON CONFLICT (colaborador_id, data) DO NOTHING',
-        [dbId, date, ano]
+        "INSERT INTO plano_ferias (colaborador_id, ano, data_inicio, data_fim, dias_uteis, tipo, estado, criado_em) VALUES ($1,$2,$3,$3,1,'mapa','planeado',NOW())",
+        [dbId, ano, date]
       );
-      toast('✅ Dia '+date+' marcado como férias para '+nome, 'success');
+      toast('Dia '+date+' marcado como f&#233;rias para '+nome, 'success');
     }
-    // Refresh the map
     renderMapaFerias();
   } catch(e) {
-    // Fallback: use plano_ferias table with ranges
-    try {
-      if (isCurrentlyFer) {
-        await nq(
-          'DELETE FROM plano_ferias WHERE colaborador_id=$1 AND data_inicio=$2 AND data_fim=$2 AND ano=$3',
-          [dbId, date, date, ano]
-        );
-      } else {
-        await nq(
-          'INSERT INTO plano_ferias (colaborador_id, data_inicio, data_fim, ano, estado, criado_em) VALUES ($1,$2,$2,$3,'planeado',NOW()) ON CONFLICT DO NOTHING',
-          [dbId, date, date, ano]
-        );
-      }
-      toast('✅ '+date+' actualizado para '+nome, 'success');
-      renderMapaFerias();
-    } catch(e2) {
-      toast('Erro ao guardar: '+e2.message, 'error');
-      console.error('[toggleFeriasDay]', e2);
-    }
+    toast('Erro: '+e.message, 'error');
+    console.error('[toggleFeriasDay]', e);
   }
 }
 
 async function exportMapaExcel() {
-  toast('A preparar exportação Excel do mapa...', 'info');
+  toast('A preparar exporta&#231;&#227;o...', 'info');
   window.print();
 }
 
-// Wire into showPage
 const _ffShowPage = showPage;
 showPage = function(page) {
   _ffShowPage(page);
