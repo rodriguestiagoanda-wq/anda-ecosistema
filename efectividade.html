@@ -1116,6 +1116,12 @@ async function supaUpsert(table, body, onConflict) {
       <option value="">-- Seleccionar Supervisor --</option>
     </select>
   </div>
+  <div class="ctrl-group">
+    <label>Elaborado por</label>
+    <select id="elaboradoPor" onchange="buildSheet()" style="width:220px;">
+      <option value="">-- Seleccionar --</option>
+    </select>
+  </div>
   <div class="lock-indicator" id="lockIndicator">
     📬 <span id="lockMsg">Folha entregue</span>
     &nbsp;
@@ -1185,10 +1191,10 @@ async function supaUpsert(table, body, onConflict) {
         <div id="footerSup" style="font-size:7.5pt;">Danilson Bertil Albano</div>
         <div style="font-size:7pt;">Data: ___/___/______</div>
       </div>
-      <div class="sign-block">
-        <div style="font-size:7.5pt;margin-bottom:18px;">O Oficial de Programas</div>
+      <div class="sign-block" id="elabSignBlock">
+        <div id="footerElabRole" style="font-size:7.5pt;margin-bottom:18px;">Elaborado por</div>
         <div class="sign-line"></div>
-        <div style="font-size:7.5pt;">Henriques Saidene Henriques</div>
+        <div id="footerElab" style="font-size:7.5pt;">___________________________</div>
         <div style="font-size:7pt;">Data: ___/___/______</div>
       </div>
     </div>
@@ -1556,6 +1562,7 @@ function getWorkingDays(totalDays, mes, ano) {
 
 function buildSheet() {
   populateSupervisores();
+  populateElaborados();
   const mes = getCurrentMes();
   const ano = getCurrentAno();
   const totalDays = getDaysInMonth(mes, ano);
@@ -1575,6 +1582,19 @@ function buildSheet() {
   const lastDay = getDaysInMonth(mes, ano);
   document.getElementById('footerDate').textContent = `${footerDistr}, ${lastDay} de ${mesNome} de ${ano}`;
   document.getElementById('footerSup').textContent = supervisor;
+  const elabVal = document.getElementById('elaboradoPor') ? document.getElementById('elaboradoPor').value : '';
+  if (document.getElementById('footerElab')) {
+    document.getElementById('footerElab').textContent = elabVal || '___________________________';
+    // Update the role label for the elaborado person
+    const elabPerson = colaboradores.find(function(c) { return c.nome === elabVal; });
+    if (document.getElementById('footerElabRole') && elabVal) {
+      document.getElementById('footerElabRole').textContent = elabPerson ? (elabPerson.cargo || 'Elaborado por') : 'Elaborado por';
+    }
+  }
+  // Show/hide second sign block based on whether elaborado is set
+  if (document.getElementById('elabSignBlock')) {
+    document.getElementById('elabSignBlock').style.display = elabVal || 'block' ? 'block' : 'none';
+  }
 
   const grupoFilter = document.getElementById('filterGrupo') ? document.getElementById('filterGrupo').value : '';
   let filtered = colaboradores;
@@ -1964,20 +1984,74 @@ function populateSupervisores() {
   const sel = document.getElementById('supervisor');
   if (!sel) return;
   const current = sel.value;
-  // Get all supervisors from colaboradores
-  const supervisors = colaboradores.filter(c =>
-    c.cargo.trim().toLowerCase() === 'supervisor distrital'
-  );
+
+  // All active supervisor distritais
+  const supervisors = colaboradores.filter(function(c) {
+    return c.cargo.trim().toLowerCase() === 'supervisor distrital';
+  });
+
   // Rebuild options
   sel.innerHTML = '<option value="">-- Seleccionar Supervisor --</option>';
-  supervisors.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.nome;
-    opt.textContent = s.nome + ' (' + s.distrito + ')';
-    if (s.nome === current) opt.selected = true;
-    sel.appendChild(opt);
-  });
+
+  // Group: Supervisores Distritais
+  if (supervisors.length > 0) {
+    const grpSup = document.createElement('optgroup');
+    grpSup.label = 'Supervisores Distritais';
+    supervisors.forEach(function(s) {
+      const opt = document.createElement('option');
+      opt.value = s.nome;
+      opt.textContent = s.nome + ' (' + s.distrito + ')';
+      if (s.nome === current) opt.selected = true;
+      grpSup.appendChild(opt);
+    });
+    sel.appendChild(grpSup);
+  }
+
+  // Auto-select first supervisor if none selected
   if (!current && supervisors.length > 0) sel.value = supervisors[0].nome;
+}
+
+function populateElaborados() {
+  const sel = document.getElementById('elaboradoPor');
+  if (!sel) return;
+  const current = sel.value;
+
+  // Staff workers that can be assigned as elaborado por
+  const staffList = colaboradores.filter(function(c) {
+    return c.tipo === 'Staff' || c.cargo.trim().toLowerCase().includes('gestor') || c.cargo.trim().toLowerCase().includes('director');
+  });
+  // Also include supervisors in case they elaborate too
+  const supervisors = colaboradores.filter(function(c) {
+    return c.cargo.trim().toLowerCase() === 'supervisor distrital';
+  });
+
+  sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+
+  if (staffList.length > 0) {
+    const grpStaff = document.createElement('optgroup');
+    grpStaff.label = 'Staff';
+    staffList.forEach(function(s) {
+      const opt = document.createElement('option');
+      opt.value = s.nome;
+      opt.textContent = s.nome + ' (' + (s.cargo || s.tipo) + ')';
+      if (s.nome === current) opt.selected = true;
+      grpStaff.appendChild(opt);
+    });
+    sel.appendChild(grpStaff);
+  }
+
+  if (supervisors.length > 0) {
+    const grpSup = document.createElement('optgroup');
+    grpSup.label = 'Supervisores';
+    supervisors.forEach(function(s) {
+      const opt = document.createElement('option');
+      opt.value = s.nome;
+      opt.textContent = s.nome + ' (' + s.distrito + ')';
+      if (s.nome === current) opt.selected = true;
+      grpSup.appendChild(opt);
+    });
+    sel.appendChild(grpSup);
+  }
 }
 
 // Close modals on overlay click
