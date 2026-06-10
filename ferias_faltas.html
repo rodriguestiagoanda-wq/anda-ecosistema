@@ -175,7 +175,32 @@ button{font-family:var(--font);cursor:pointer;}
   .kpi-grid{grid-template-columns:repeat(2,1fr);}
 }
 /* ── Print ────────────────────────────────────────────────────────────── */
-@media print{.topbar,.sidebar,.filter-bar,.btn,.modal-bg{display:none!important;}}
+@media print{
+  @page{size:A4 landscape;margin:10mm;}
+  body{margin:0;background:white;}
+  .topbar,.sidebar,.sec-hdr-actions,.sec-hdr,.filter-bar,.btn,.modal-bg,.mapa-legend,
+  #toasts,.loading-overlay,.page-hint,.mapa-instruct{display:none!important;}
+  .shell{display:block!important;height:auto!important;}
+  .main{overflow:visible!important;background:white;padding:0;}
+  .page{display:none!important;padding:0;}
+  #page-mapa-ferias{display:block!important;}
+  #print-anda-header{display:block!important;}
+  .mapa-wrap{overflow:visible!important;border:none!important;border-radius:0!important;}
+  .mapa-table{min-width:unset!important;width:100%;font-size:8px;border-collapse:collapse;}
+  .mapa-table th,.mapa-table td{border:1px solid #999;padding:1px 2px;}
+  .mapa-th-nome{min-width:130px!important;position:static!important;}
+  .mapa-nome-cell{position:static!important;min-width:130px!important;}
+  .mapa-th-dia{min-width:16px!important;}
+  .mapa-day{min-width:16px!important;height:16px!important;}
+  .mf-fer{background:#1e293b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .mf-wk{background:#d1d5db!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .mf-fh{background:#fef9c3!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .mapa-th-mes{background:#1d4ed8!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .mapa-th-dia{background:#2563ab!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .mapa-th-dia.weekend{background:#374151!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .mapa-th-nome{background:#0f1f3d!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .mapa-grupo-hdr td{background:#1a3a6c!important;color:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
 /* ── Loading ──────────────────────────────────────────────────────────── */
 .loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
 .loading-overlay.active{display:flex;}
@@ -427,6 +452,16 @@ button{font-family:var(--font);cursor:pointer;}
 
 <!-- ═══════════════ PAGE: MAPA FÉRIAS ═══════════════ -->
 <div class="page" id="page-mapa-ferias">
+  <!-- Print-only ANDA header -->
+  <div id="print-anda-header" style="display:none;margin-bottom:8mm;">
+    <div style="display:flex;align-items:center;gap:10px;border-bottom:2px solid #0f1f3d;padding-bottom:4mm;margin-bottom:4mm;">
+      <img src="logo_anda.png" alt="ANDA" style="height:30px;" onerror="this.style.display='none'">
+      <div>
+        <div style="font-size:16pt;font-weight:800;color:#0f1f3d;">ASSOCIA&#199;&#195;O NACIONAL PARA O DESENVOLVIMENTO DE ANGOLA</div>
+        <div style="font-size:10pt;color:#374151;" id="print-anda-subtitle">Plano de F&#233;rias Anual</div>
+      </div>
+    </div>
+  </div>
   <div class="sec-hdr">
     <h2><i class="ti ti-layout-grid" style="color:var(--violet);"></i> Mapa de Férias Anual</h2>
     <div class="sec-hdr-actions">
@@ -452,7 +487,7 @@ button{font-family:var(--font);cursor:pointer;}
         <option value="mensal">Vista Mensal</option>
       </select>
       <button class="btn btn-primary btn-sm" onclick="exportMapaExcel()"><i class="ti ti-table-export"></i> Excel</button>
-      <button class="btn btn-sm" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+      <button class="btn btn-sm" onclick="printMapaFerias()"><i class="ti ti-printer"></i> Imprimir</button>
     </div>
   </div>
   <div style="margin-bottom:10px;font-size:11px;color:var(--slate);">
@@ -2221,7 +2256,9 @@ async function renderMapaFerias() {
 
   const FERIADOS_SET = new Set(MAPA_FERIADOS[String(ano)] || []);
   const MESES_SHORT  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const mesesRange   = vista === 'mensal' ? [new Date().getMonth()] : [0,1,2,3,4,5,6,7,8,9,10,11];
+  const mesesRange   = window._isPrintMode
+    ? (function(){ var a=[]; for(var m=window._printMinMonth||0; m<=(window._printMaxMonth||11); m++) a.push(m); return a; })()
+    : (vista === 'mensal' ? [new Date().getMonth()] : [0,1,2,3,4,5,6,7,8,9,10,11]);
   const monthDays    = mesesRange.map(function(m){
     const n = new Date(ano, m+1, 0).getDate();
     const days = [];
@@ -2355,6 +2392,61 @@ async function toggleFeriasDay(colId, dbId, date, nome, isRemoving) {
     toast('Erro: '+e.message, 'error');
     console.error('[toggleFeriasDay]', e);
   }
+}
+
+// ── Print Mapa de Férias ────────────────────────────────────────────────
+async function printMapaFerias() {
+  const ano   = parseInt(document.getElementById('mapaAno')?.value || new Date().getFullYear());
+  const dist  = document.getElementById('mapaDist')?.value  || '';
+  const grupo = document.getElementById('mapaGrupo')?.value || '';
+
+  // Determine the month range: first month with any planned vacation → December (last month of year)
+  // Load all planned days for this year/filter to find min month
+  let minMonth = 0; // default: January (0-indexed)
+  try {
+    let cols = colaboradores.filter(function(c){ return !c._inactive; });
+    if (dist)  cols = cols.filter(function(c){ return c.distrito === dist; });
+    if (grupo) cols = cols.filter(function(c){ return (c.tipo||c.cargo||'') === grupo; });
+    const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
+    const pfRows = await nq(
+      'SELECT data_inicio FROM plano_ferias WHERE ano=$1 AND colaborador_id = ANY($2::int[]) ORDER BY data_inicio ASC LIMIT 1',
+      [ano, dbIds]
+    ) || [];
+    if (pfRows.length > 0 && pfRows[0].data_inicio) {
+      minMonth = new Date(pfRows[0].data_inicio).getMonth(); // 0-indexed
+    }
+  } catch(e) { console.warn('[Print] minMonth:', e.message); }
+
+  // Build the print subtitle
+  const MESES_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const subtitle = 'Plano de F&#233;rias ' + ano
+    + (dist ? ' — ' + dist : '')
+    + (grupo ? ' — ' + grupo : '')
+    + ' (' + MESES_SHORT[minMonth] + ' a Dez)';
+
+  const subtitleEl = document.getElementById('print-anda-subtitle');
+  if (subtitleEl) subtitleEl.textContent = 'Plano de Férias ' + ano
+    + (dist ? ' — ' + dist : '')
+    + (grupo ? ' — ' + grupo : '')
+    + ' (' + MESES_SHORT[minMonth] + ' a Dez)';
+
+  // Temporarily override mapaVista to force anual and re-render with restricted months
+  // We store the current vista and set a print range
+  window._printMinMonth = minMonth;
+  window._printMaxMonth = 11; // always December
+  window._isPrintMode = true;
+
+  // Re-render the map for print range only
+  await renderMapaFerias();
+
+  // Trigger print
+  window.print();
+
+  // Restore normal view after print
+  window._isPrintMode = false;
+  window._printMinMonth = null;
+  window._printMaxMonth = null;
+  await renderMapaFerias();
 }
 
 async function exportMapaExcel() {
