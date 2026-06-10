@@ -2173,64 +2173,85 @@ async function renderMapaFerias() {
   const vista  = document.getElementById('mapaVista')?.value || 'anual';
   const wrap   = document.getElementById('mapaWrap');
   if (!wrap) return;
-  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--slate);">⏳ A gerar mapa...</div>';
+  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--slate);">⏳ A gerar mapa de férias...</div>';
 
   // Filter colaboradores
   let cols = colaboradores.filter(function(c){ return !c._inactive; });
   if (dist)  cols = cols.filter(function(c){ return c.distrito === dist; });
-  if (grupo) cols = cols.filter(function(c){ return (c.tipo||'') === grupo; });
+  if (grupo) cols = cols.filter(function(c){ return (c.tipo||c.cargo||'') === grupo; });
+  if (!cols.length) { wrap.innerHTML = '<p style="padding:20px;color:var(--slate);">Sem colaboradores para mostrar.</p>'; return; }
 
-  if (!cols.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--slate);">Nenhum colaborador encontrado com os filtros seleccionados.</div>';
-    return;
-  }
-
-  // Load attendance from efectividade_registos for the full year
-  let attMap = {}; // dbId → { 'YYYY-MM-DD': {val, justificada} }
+  // 1. Load falta_acumulados → sum dias_ferias per worker
+  let acumMap = {}; // dbId → { diasFerias, horasAcum }
   try {
     const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
-    if (dbIds.length > 0) {
-      const rows = await nq(
-        `SELECT colaborador_id, data, valor, justificada, presente
-         FROM efectividade_registos
-         WHERE EXTRACT(YEAR FROM data)=$1
-         AND colaborador_id = ANY($2::int[])
-         ORDER BY data ASC`,
-        [ano, dbIds]
-      ) || [];
-      rows.forEach(function(r){
-        if (!attMap[r.colaborador_id]) attMap[r.colaborador_id] = {};
-        attMap[r.colaborador_id][r.data.slice(0,10)] = { val: r.valor || (r.presente?'1':'O'), just: r.justificada };
-      });
-    }
-  } catch(e) { console.warn('[Mapa] attendance load:', e.message); }
+    const acumRows = await nq(
+      'SELECT colaborador_id, COALESCE(SUM(dias_ferias),0) AS total_ferias FROM falta_acumulados WHERE ano=$1 AND colaborador_id = ANY($2::int[]) GROUP BY colaborador_id',
+      [ano, dbIds]
+    ) || [];
+    acumRows.forEach(function(r) {
+      acumMap[r.colaborador_id] = { diasFerias: parseFloat(r.total_ferias) || 0, extrasHoras: 0 };
+    });
+  } catch(e) { console.warn('[Mapa] acumMap load:', e.message); }
 
-  // Load plano_ferias (approved)
-  let ferMap = {}; // dbId → Set of date strings
+  // 2. Load H (horas) entries from efectividade_registos → add extra days (8h=1day)
+  try {
+    const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
+    const hRows = await nq(
+      'SELECT colaborador_id, valor FROM efectividade_registos WHERE ano_ref=$1 AND valor LIKE 'H%' AND colaborador_id = ANY($2::int[])',
+      [ano, dbIds]
+    ) || [];
+    const horasMap = {};
+    hRows.forEach(function(r) {
+      const id = r.colaborador_id;
+      const hrs = parseFloat(String(r.valor).replace('H','')) || 0;
+      if (!horasMap[id]) horasMap[id] = 0;
+      horasMap[id] += hrs;
+    });
+    Object.keys(horasMap).forEach(function(id) {
+      const extraDias = Math.floor(horasMap[id] / 8);
+      if (!acumMap[id]) acumMap[id] = { diasFerias: 0, extrasHoras: 0 };
+      acumMap[id].extrasHoras = extraDias;
+    });
+  } catch(e) { console.warn('[Mapa] horas load:', e.message); }
+
+  // 3. Load plano_ferias for all workers (any state) → get planned dates
+  let planMap = {}; // dbId → Set of date strings
   try {
     const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
     const pfRows = await nq(
-      `SELECT colaborador_id, data_inicio, data_fim FROM plano_ferias
-       WHERE estado='aprovado' AND ano=$1
-       AND colaborador_id = ANY($2::int[])`, [ano, dbIds]
+      'SELECT colaborador_id, data FROM plano_ferias_dias WHERE ano=$1 AND colaborador_id = ANY($2::int[])',
+      [ano, dbIds]
     ) || [];
-    pfRows.forEach(function(f){
-      if (!ferMap[f.colaborador_id]) ferMap[f.colaborador_id] = new Set();
-      let d = new Date(f.data_inicio);
-      const end = new Date(f.data_fim);
-      while (d <= end) {
-        ferMap[f.colaborador_id].add(d.toISOString().slice(0,10));
-        d.setDate(d.getDate()+1);
-      }
+    pfRows.forEach(function(r) {
+      const id = String(r.colaborador_id);
+      if (!planMap[id]) planMap[id] = new Set();
+      planMap[id].add(r.data.slice(0,10));
     });
-  } catch(e) {}
+  } catch(e) {
+    // Fallback: try plano_ferias with date ranges
+    try {
+      const dbIds = cols.map(function(c){ return andaDbId(c.id); }).filter(Boolean);
+      const pfRows = await nq(
+        'SELECT colaborador_id, data_inicio, data_fim FROM plano_ferias WHERE ano=$1 AND colaborador_id = ANY($2::int[])',
+        [ano, dbIds]
+      ) || [];
+      pfRows.forEach(function(f) {
+        const id = String(f.colaborador_id);
+        if (!planMap[id]) planMap[id] = new Set();
+        let d = new Date(f.data_inicio);
+        const end = new Date(f.data_fim);
+        while (d <= end) { planMap[id].add(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
+      });
+    } catch(e2) { console.warn('[Mapa] planMap fallback:', e2.message); }
+  }
 
   const FERIADOS_SET = new Set(MAPA_FERIADOS[String(ano)] || []);
   const MESES_SHORT  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
   // Determine months to show
   const mesesRange = vista === 'mensal'
-    ? [new Date().getMonth()] // current month only
+    ? [new Date().getMonth()]
     : [0,1,2,3,4,5,6,7,8,9,10,11];
 
   // Build days per month
@@ -2241,7 +2262,7 @@ async function renderMapaFerias() {
     return { m, name: MESES_SHORT[m], days };
   });
 
-  // Group cols by distrito for visual grouping
+  // Group cols by distrito
   const byDist = {};
   cols.forEach(function(col){
     const d = col.distrito || 'Outros';
@@ -2250,12 +2271,24 @@ async function renderMapaFerias() {
   });
 
   // ── Build HTML table ──────────────────────────────────────────────────
-  let html = '<table class="mapa-table">';
+  const totalDayCols = monthDays.reduce(function(s,md){ return s+md.days.length; }, 0);
+  let html = '<style>';
+  html += '.mapa-day-fer{background:#1e293b;cursor:pointer;transition:background .15s;}';
+  html += '.mapa-day-fer:hover{background:#334155;}';
+  html += '.mapa-day-emp{background:#fff;cursor:pointer;}';
+  html += '.mapa-day-emp:hover{background:#e0f2fe;}';
+  html += '.mapa-day-wk{background:#f1f5f9;cursor:default;}';
+  html += '.mapa-day-fh{background:#fef9c3;cursor:default;font-size:9px;text-align:center;color:#92400e;}';
+  html += '.mapa-saldo{font-size:9px;font-weight:600;padding:1px 4px;border-radius:4px;margin-left:4px;}';
+  html += '.mapa-saldo-ok{background:#dcfce7;color:#166534;}';
+  html += '.mapa-saldo-over{background:#fee2e2;color:#991b1b;}';
+  html += '</style>';
+  html += '<table class="mapa-table">';
 
   // Row 1: Month headers
   html += '<thead><tr>';
-  html += '<th class="mapa-th-nome" rowspan="2">Colaborador</th>';
-  monthDays.forEach(function(md, mi){
+  html += '<th class="mapa-th-nome" rowspan="2">Colaborador<br><span style="font-weight:400;font-size:9px;opacity:.7">Usados / Disponíveis</span></th>';
+  monthDays.forEach(function(md){
     html += '<th class="mapa-th-mes mapa-mes-sep" colspan="'+md.days.length+'">'+md.name+'</th>';
   });
   html += '</tr>';
@@ -2265,7 +2298,7 @@ async function renderMapaFerias() {
   monthDays.forEach(function(md){
     md.days.forEach(function(d){
       const dow = new Date(ano, md.m, d).getDay();
-      const ds = ano+'-'+String(md.m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const ds  = ano+'-'+String(md.m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
       const isWk  = dow === 0 || dow === 6;
       const isFer = FERIADOS_SET.has(ds);
       const cls = (isWk ? ' weekend' : '') + (isFer ? ' feriado' : '');
@@ -2277,18 +2310,22 @@ async function renderMapaFerias() {
 
   // Data rows grouped by distrito
   Object.keys(byDist).sort().forEach(function(distNome){
-    // District group header
-    html += '<tr class="mapa-grupo-hdr"><td colspan="'+(1+monthDays.reduce(function(s,md){ return s+md.days.length; },0))+'">📍 '+distNome+'</td></tr>';
+    html += '<tr class="mapa-grupo-hdr"><td colspan="'+(1+totalDayCols)+'">📍 '+distNome+'</td></tr>';
 
     byDist[distNome].forEach(function(col){
-      const dbId = andaDbId(col.id);
-      const colAtt  = attMap[dbId] || {};
-      const colFer  = ferMap[dbId]  || new Set();
+      const dbId    = andaDbId(col.id);
+      const acum    = acumMap[String(dbId)] || { diasFerias: 0, extrasHoras: 0 };
+      const totalDisp = (acum.diasFerias || 0) + (acum.extrasHoras || 0);
+      const colPlan = planMap[String(dbId)] || new Set();
+      const usados  = colPlan.size;
+      const saldoClass = usados > totalDisp ? 'mapa-saldo-over' : 'mapa-saldo-ok';
+      const saldoTxt  = usados+'/'+totalDisp;
 
       html += '<tr>';
-      html += '<td class="mapa-nome-cell" onclick="showColabDetalhe('+JSON.stringify(col.id)+')" title="Ver detalhe de '+col.nome+'">'
+      html += '<td class="mapa-nome-cell" title="'+col.nome+' — '+col.cargo+'">'
         + col.nome
-        + '<br><span style="font-size:9px;color:var(--slate);font-weight:400;">'+col.cargo+'</span></td>';
+        + '<br><span style="font-size:9px;color:var(--slate);font-weight:400;">'+col.cargo+'</span>'
+        + '<span class="mapa-saldo '+saldoClass+'">'+saldoTxt+'</span></td>';
 
       monthDays.forEach(function(md){
         md.days.forEach(function(d){
@@ -2297,26 +2334,19 @@ async function renderMapaFerias() {
           const isWk  = dow === 0 || dow === 6;
           const isFer = FERIADOS_SET.has(ds);
 
-          if (isWk)  { html += '<td class="mapa-day weekend"></td>'; return; }
-          if (isFer) { html += '<td class="mapa-day feriado" title="Feriado">F</td>'; return; }
+          if (isWk)  { html += '<td class="mapa-day mapa-day-wk" title="Fim de semana"></td>'; return; }
+          if (isFer) { html += '<td class="mapa-day mapa-day-fh" title="Feriado">F</td>'; return; }
 
-          // Priority: approved férias plan > attendance record
-          if (colFer.has(ds)) {
-            html += '<td class="mapa-day ferias" title="F\u00e9rias aprovadas" onclick="openNovoPedidoFor('+JSON.stringify(col.id)+','+JSON.stringify(col.nome)+')">V</td>';
-            return;
+          if (colPlan.has(ds)) {
+            html += '<td class="mapa-day mapa-day-fer" title="Férias planeadas: '+ds+'" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'')"></td>';
+          } else {
+            if (usados >= totalDisp && totalDisp > 0) {
+              // Limit reached: show as locked (no click)
+              html += '<td class="mapa-day mapa-day-emp" style="background:#f9fafb;cursor:not-allowed;" title="Sem dias disponíveis ('+usados+'/'+totalDisp+')"></td>';
+            } else {
+              html += '<td class="mapa-day mapa-day-emp" title="Clique para marcar férias: '+ds+'" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'')"></td>';
+            }
           }
-
-          const att = colAtt[ds];
-          if (!att) {
-            html += '<td class="mapa-day empty" title="'+ds+'" onclick="showDayEdit(\''+col.id+'\',\''+ds+'\',\''+col.nome+'\')"></td>';
-            return;
-          }
-
-          const val  = att.val || '';
-          const just = att.just;
-          const cls  = MAPA_CODE_CLASS[val] || (just ? 'falta-j' : 'falta-nj');
-          const lbl  = MAPA_CODE_LABEL[val] || val.slice(0,2) || '?';
-          html += '<td class="mapa-day '+cls+'" title="'+val+(just?' (justificada)':'')+' — '+ds+'" onclick="showDayEdit(\''+col.id+'\',\''+ds+'\',\''+col.nome+'\')">'+lbl+'</td>';
         });
       });
 
@@ -2326,91 +2356,78 @@ async function renderMapaFerias() {
 
   html += '</tbody></table>';
   html += '<div class="mapa-legend">'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#dcfce7;"></div> Presente (P)</div>'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#bfdbfe;"></div> Férias (V)</div>'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fecaca;"></div> Falta NJ (O)</div>'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fef3c7;"></div> Falta Just. (E/P)</div>'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#e9d5ff;"></div> Licença (SL)</div>'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fee2e2;"></div> Suspensão (SS)</div>'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fbcfe8;"></div> Maternidade (MP)</div>'
-    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#d1fae5;"></div> Feriado (F)</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#1e293b;"></div> Férias planeadas</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#f1f5f9;border:1px solid #e2e8f0;"></div> Fim de semana</div>'
+    + '<div class="mapa-legend-item"><div class="mapa-legend-swatch" style="background:#fef9c3;border:1px solid #fde68a;"></div> Feriado</div>'
+    + '<div class="mapa-legend-item" style="font-size:10px;color:var(--slate);">Clique numa célula para marcar/desmarcar dias de férias</div>'
     + '</div>';
 
   wrap.innerHTML = html;
 }
 
-// Day edit modal (quick register from mapa)
-let _dayEditColId = null, _dayEditDate = null;
-function showDayEdit(colId, date, nome) {
-  _dayEditColId = colId;
-  _dayEditDate  = date;
-  const d = new Date(date).toLocaleDateString('pt-MZ');
-  const msg = `Registar para ${nome} em ${d}:\n\n`
-    + '1=Presente | V=Férias | O=Falta NJ | E=Falta Just.\n'
-    + 'MP=Maternidade | SL=Licença | SS=Suspensão | F=Feriado\n\n'
-    + 'Código (ou Enter para cancelar):';
-  _dayEditColId=colId;_dayEditDate=date;var dm=document.getElementById('dayEditPopup');dm.querySelector('.dep-title').textContent=nome+' — '+new Date(date).toLocaleDateString('pt-MZ');dm.style.display='flex';return;
-  if (!choice || !choice.trim()) return;
-  const val = choice.trim().toUpperCase();
-  saveDayFromMapa(colId, date, val);
-}
+// Toggle a vacation day directly in the map
+async function toggleFeriasDay(colId, dbId, date, nome) {
+  if (!dbId) { toast('Colaborador sem ID na BD.', 'error'); return; }
+  const ano = parseInt(date.slice(0,4));
 
-async function saveDayFromMapa(colId, date, val) {
-  const dbId = andaDbId(colId);
-  if (!dbId) return;
-  const presente = !['O','SL','SS'].includes(val);
-  const just     = ['E','F','MP','P','SL'].includes(val);
+  // Check if this day is already planned (read from DOM via cell class)
+  const cell = event && event.target ? event.target : null;
+  const isCurrentlyFer = cell && cell.classList.contains('mapa-day-fer');
+
   try {
-    await nq(
-      `INSERT INTO efectividade_registos (colaborador_id, data, valor, presente, justificada, criado_em)
-       VALUES ($1,$2,$3,$4,$5,NOW())
-       ON CONFLICT (colaborador_id, data)
-       DO UPDATE SET valor=$3, presente=$4, justificada=$5, actualizado_em=NOW()`,
-      [dbId, date, val, presente, just]
-    );
-    toast('✅ Registado: '+val+' em '+date, 'success');
-    // Auto-update falta_acumulados
-    const m = parseInt(date.slice(5,7));
-    const a = parseInt(date.slice(0,4));
-    const stat = { diasTrabalhados:0, diasFerias:val==='V'?1:0, diasFaltasNJ:(!just&&!presente)?1:0, diasFaltasJ:(just&&!presente)?1:0, diasLicenca:val==='SL'?1:0, diasSuspensao:val==='SS'?1:0 };
-    await ffeSaveAcumulados(colId, m, a, stat, 0);
+    if (isCurrentlyFer) {
+      // Remove the vacation day
+      await nq(
+        'DELETE FROM plano_ferias_dias WHERE colaborador_id=$1 AND data=$2 AND ano=$3',
+        [dbId, date, ano]
+      );
+      toast('✅ Dia '+date+' removido das férias de '+nome, 'success');
+    } else {
+      // Add the vacation day
+      await nq(
+        'INSERT INTO plano_ferias_dias (colaborador_id, data, ano, criado_em) VALUES ($1,$2,$3,NOW()) ON CONFLICT (colaborador_id, data) DO NOTHING',
+        [dbId, date, ano]
+      );
+      toast('✅ Dia '+date+' marcado como férias para '+nome, 'success');
+    }
+    // Refresh the map
     renderMapaFerias();
-  } catch(e) { toast('Erro ao guardar: '+e.message, 'error'); }
+  } catch(e) {
+    // Fallback: use plano_ferias table with ranges
+    try {
+      if (isCurrentlyFer) {
+        await nq(
+          'DELETE FROM plano_ferias WHERE colaborador_id=$1 AND data_inicio=$2 AND data_fim=$2 AND ano=$3',
+          [dbId, date, date, ano]
+        );
+      } else {
+        await nq(
+          'INSERT INTO plano_ferias (colaborador_id, data_inicio, data_fim, ano, estado, criado_em) VALUES ($1,$2,$2,$3,'planeado',NOW()) ON CONFLICT DO NOTHING',
+          [dbId, date, date, ano]
+        );
+      }
+      toast('✅ '+date+' actualizado para '+nome, 'success');
+      renderMapaFerias();
+    } catch(e2) {
+      toast('Erro ao guardar: '+e2.message, 'error');
+      console.error('[toggleFeriasDay]', e2);
+    }
+  }
 }
 
 async function exportMapaExcel() {
   toast('A preparar exportação Excel do mapa...', 'info');
-  // Simplified: open printable version
   window.print();
 }
 
 // Wire into showPage
-function closeDayEditPopup(){document.getElementById('dayEditPopup').style.display='none';}const _ffShowPage = showPage;
+const _ffShowPage = showPage;
 showPage = function(page) {
   _ffShowPage(page);
   if (page === 'mapa-ferias') {
     setTimeout(renderMapaFerias, 100);
   }
-  };
+};
 </script>
-<div id="dayEditPopup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px">
-<div style="background:#fff;border-radius:12px;padding:24px;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-<strong class="dep-title" style="font-size:14px"></strong>
-<button onclick="closeDayEditPopup()" style="background:none;border:none;font-size:20px;cursor:pointer">X</button>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'1');closeDayEditPopup()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">1 Presente</button>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'V');closeDayEditPopup()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">V Ferias</button>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'O');closeDayEditPopup()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">O Falta NJ</button>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'E');closeDayEditPopup()" style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">E Falta J</button>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'F');closeDayEditPopup()" style="background:#65a30d;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">F Feriado</button>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'MP');closeDayEditPopup()" style="background:#db2777;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">MP Matern</button>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'SL');closeDayEditPopup()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">SL Licenca</button>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'SS');closeDayEditPopup()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:10px 4px;font-weight:700;cursor:pointer">SS Suspens</button>
-</div>
-<button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'');closeDayEditPopup()" style="margin-top:12px;width:100%;background:#f3f4f6;border:1px solid #d1d5db;border-radius:8px;padding:8px;cursor:pointer">Limpar registo</button>
-</div>
-</div>
 </body>
 </html>
