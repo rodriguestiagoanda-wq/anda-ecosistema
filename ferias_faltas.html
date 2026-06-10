@@ -2439,10 +2439,14 @@ async function printMapaFerias() {
   // Re-render the map for print range only
   await renderMapaFerias();
 
-  // Trigger print
+  // Show print header, trigger print, then restore
+  const printHdr = document.getElementById('print-anda-header');
+  if (printHdr) printHdr.style.display = 'block';
+
   window.print();
 
-  // Restore normal view after print
+  // Restore
+  if (printHdr) printHdr.style.display = 'none';
   window._isPrintMode = false;
   window._printMinMonth = null;
   window._printMaxMonth = null;
