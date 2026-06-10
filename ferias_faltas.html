@@ -2349,7 +2349,7 @@ function showDayEdit(colId, date, nome) {
     + '1=Presente | V=Férias | O=Falta NJ | E=Falta Just.\n'
     + 'MP=Maternidade | SL=Licença | SS=Suspensão | F=Feriado\n\n'
     + 'Código (ou Enter para cancelar):';
-  const choice = prompt(msg, '');
+  _dayEditColId=colId;_dayEditDate=date;var dm=document.getElementById('dayEditPopup');dm.querySelector('.dep-title').textContent=nome+' — '+new Date(date).toLocaleDateString('pt-MZ');dm.style.display='flex';return;
   if (!choice || !choice.trim()) return;
   const val = choice.trim().toUpperCase();
   saveDayFromMapa(colId, date, val);
@@ -2385,14 +2385,14 @@ async function exportMapaExcel() {
 }
 
 // Wire into showPage
-const _ffShowPage = showPage;
+function closeDayEditPopup(){document.getElementById('dayEditPopup').style.display='none';}const _ffShowPage = showPage;
 showPage = function(page) {
   _ffShowPage(page);
   if (page === 'mapa-ferias') {
     setTimeout(renderMapaFerias, 100);
   }
   };
-</script>
+</script><div id="dayEditPopup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;"><div style="background:#fff;border-radius:12px;padding:20px;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.25);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><b class="dep-title" style="font-size:13px;color:#333;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></b><button onclick="closeDayEditPopup()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#666;line-height:1;">&#x2715;</button></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;"><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'1');closeDayEditPopup()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">1<br>Presente</button><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'V');closeDayEditPopup()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">V<br>F&#xe9;rias</button><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'O');closeDayEditPopup()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">O<br>Falta NJ</button><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'E');closeDayEditPopup()" style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">E<br>Falta J.</button><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'F');closeDayEditPopup()" style="background:#d1fae5;color:#065f46;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">F<br>Feriado</button><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'MP');closeDayEditPopup()" style="background:#fbcfe8;color:#9d174d;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">MP<br>Matern.</button><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'SL');closeDayEditPopup()" style="background:#e9d5ff;color:#6b21a8;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">SL<br>Licen&#xe7;a</button><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'SS');closeDayEditPopup()" style="background:#fee2e2;color:#991b1b;border:none;border-radius:8px;padding:10px 2px;cursor:pointer;font-weight:700;font-size:12px;">SS<br>Suspens.</button></div><button onclick="saveDayFromMapa(_dayEditColId,_dayEditDate,'');closeDayEditPopup()" style="margin-top:10px;width:100%;background:#f3f4f6;border:none;border-radius:8px;padding:8px;cursor:pointer;color:#666;font-size:12px;">&#x1F5D1; Limpar registo</button></div></div>
 
 </body>
 </html>
