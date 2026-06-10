@@ -2304,13 +2304,13 @@ async function renderMapaFerias() {
 
           if (colPlan.has(ds)) {
             // Planned vacation day → black, click to remove
-            html += '<td class="mapa-day mf-fer" title="F&#233;rias: '+ds+' (clique para remover)" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'',true)"></td>';
+            html += '<td class="mapa-day mf-fer" title="F&#233;rias: '+ds+' (clique para remover)" onclick="toggleFeriasDay(\''+col.id+'\','+dbId+',\''+ds+'\',\''+col.nome+'\',true)"></td>';
           } else if (disponivel <= 0 && totalDisp > 0) {
             // No days left → locked
             html += '<td class="mapa-day mf-lock" title="Sem dias dispon&#237;veis ('+usados+'/'+totalDisp+')"></td>';
           } else {
             // Available slot → click to mark
-            html += '<td class="mapa-day mf-emp" title="Clique para marcar f&#233;rias: '+ds+'" onclick="toggleFeriasDay(''+col.id+'','+dbId+',''+ds+'',''+col.nome+'',false)"></td>';
+            html += '<td class="mapa-day mf-emp" title="Clique para marcar f&#233;rias: '+ds+'" onclick="toggleFeriasDay(\''+col.id+'\','+dbId+',\''+ds+'\',\''+col.nome+'\',false)"></td>';
           }
         });
       });
