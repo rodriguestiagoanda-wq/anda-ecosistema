@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gestão de Contratos</title>
+  <style>
+    :root{--navy:#17324d;--blue:#1f4e78;--light:#dce6f1;--row:#c9e9f5;--yellow:#fff2cc;--grey:#e7e6e6;--green:#38761d;--red:#c00000;--gold:#a36d00;--border:#8fa8b5;--ink:#172330}
+    *{box-sizing:border-box}body{margin:0;background:#eef2f5;color:var(--ink);font:12px Calibri,Arial,sans-serif}button,input,select,textarea{font:inherit}
+    .app{min-height:100vh;display:flex;flex-direction:column}.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:1px solid #ccd6dd;box-shadow:0 1px 4px #0001}.brand{font-size:15px;color:var(--navy);font-weight:700;margin-right:8px}.topbar label{font-weight:700}.id-input{width:180px;border:1px solid #8798a5;border-radius:4px;padding:6px 8px;text-transform:uppercase}.btn{border:0;border-radius:4px;padding:7px 11px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn-primary{background:var(--blue);color:#fff}.btn-secondary{background:#e6edf2;color:var(--navy)}.btn-danger{background:#a62727;color:#fff}.btn-small{font-size:10px;padding:4px 7px}.toast{position:fixed;z-index:100;right:14px;top:14px;max-width:min(440px,calc(100vw - 28px));padding:9px 12px;border-radius:5px;background:#243746;color:#fff;box-shadow:0 6px 20px #0004;font-size:11px}.toast.ok{background:#276638}.toast.error{background:#9f1f1f}
+    .workbook{flex:1;padding:12px 12px 0;min-width:0}.sheet{display:none;background:#fff;border:1px solid #9caeb9;box-shadow:0 2px 10px #23364818;min-height:calc(100vh - 110px)}.sheet.active{display:block}.sheet-title{margin:0;background:var(--navy);color:#fff;text-align:center;font-size:17px;letter-spacing:.2px;padding:10px 11px;font-weight:700;text-transform:uppercase}.sheet-subtitle{display:none}
+    .toolbar{display:flex;gap:9px;align-items:end;flex-wrap:wrap;padding:8px 10px;background:#f4f7f9;border-bottom:1px solid #bdcbd4}.toolbar .field{display:flex;flex-direction:column;gap:3px;min-width:150px}.toolbar label{font-size:9px;font-weight:700;color:#52616d;text-transform:uppercase}.toolbar select,.toolbar input{height:29px;border:1px solid #9babb6;border-radius:3px;background:#fff;padding:4px 6px}.result-count{margin-left:auto;color:#52616d;padding:6px 2px}.table-wrap{overflow:auto;max-height:calc(100vh - 255px)}table{border-collapse:collapse;width:100%;table-layout:fixed;min-width:1680px;font-size:10.5px}th,td{border:1px solid var(--border);padding:4px 5px;vertical-align:middle}thead th{position:sticky;top:0;z-index:3;background:var(--blue);color:#fff;text-align:center;font-size:10px;font-weight:700;height:36px}.fixed{background:#fff}.data-table tbody tr:nth-child(odd) .fixed{background:var(--row)}.editable{background:var(--yellow);padding:0}.editable select,.editable input,.editable textarea{width:100%;min-height:27px;border:0;background:transparent;padding:4px 5px;font-size:10.5px;outline:0;color:#202a31}.editable textarea{resize:vertical;min-height:29px}.editable :focus{box-shadow:inset 0 0 0 2px #2a73a5;background:#fff8dc}.number,.center{text-align:center}.group{font-weight:700;text-align:center}.state-cell{background:var(--grey);font-weight:700;text-align:center}.state-cell.regular{background:#d9ead3;color:var(--green)}.state-cell.problem{background:#f4cccc;color:var(--red)}.state-cell.warning{background:#fff2cc;color:#8a6500}.nowrap{white-space:nowrap}.money{text-align:right}.muted{color:#6b7780}.status-chip{display:inline-block;border-radius:12px;padding:2px 7px;background:#e8edf0;font-weight:700;font-size:10px}.status-chip.green{background:#d9ead3;color:var(--green)}.status-chip.red{background:#f4cccc;color:var(--red)}.status-chip.gold{background:#fff2cc;color:#7f5e00}tr.flash td{animation:flash 2.5s ease-out}@keyframes flash{0%,25%{box-shadow:inset 0 0 0 3px #f59d00;background:#fff0a8}100%{box-shadow:none}}
+    .checklist-table th:nth-child(1){width:48px}.checklist-table th:nth-child(2){width:125px}.checklist-table th:nth-child(3){width:235px}.checklist-table th:nth-child(4){width:190px}.checklist-table th:nth-child(5){width:95px}.checklist-table th:nth-child(6){width:105px}.checklist-table th:nth-child(7),.checklist-table th:nth-child(8),.checklist-table th:nth-child(9),.checklist-table th:nth-child(12){width:125px}.checklist-table th:nth-child(10),.checklist-table th:nth-child(11){width:118px}.checklist-table th:nth-child(13){width:150px}.checklist-table th:nth-child(14){width:185px}.checklist-table th:nth-child(15){width:220px}.checklist-table th:nth-child(16){width:105px}
+    .summary-body{padding:14px;overflow:auto}.cards{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:8px;min-width:760px;margin-bottom:14px}.card{border:1px solid #91a8b6;background:#fff;text-align:center;min-height:73px;display:flex;flex-direction:column;justify-content:center}.card-label{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:6px 4px;margin:-1px -1px 6px}.card-value{font-size:22px;font-weight:700;color:var(--navy)}.card.red .card-value{color:var(--red)}.card.gold .card-value{color:var(--gold)}.card.green .card-value{color:var(--green)}.summary-table{min-width:950px}.summary-table th{position:static}.summary-table td{text-align:center;height:27px}.summary-table td:first-child{text-align:left;font-weight:700;background:var(--row)}.summary-table tr.total td{font-weight:700;background:var(--light)}.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px;padding:8px;background:#fff9df;border:1px solid #d8c88b}.legend b{color:#6f5700}.swatch{display:inline-block;width:13px;height:13px;vertical-align:-3px;margin-right:4px;border:1px solid #9c9c9c}
+    .proof-table{min-width:4850px}.proof-table th{min-width:115px}.proof-table thead tr:first-child th{top:0;background:var(--navy);height:31px}.proof-table thead tr:nth-child(2) th{top:31px}.proof-table th:nth-child(1){width:50px;min-width:50px}.proof-table th:nth-child(2){width:125px}.proof-table th:nth-child(3){width:230px}.proof-table th:nth-child(4){width:190px}.proof-table th:nth-child(8){width:140px}.proof-table th:nth-child(9){width:190px}.proof-table th:nth-child(11),.proof-table th:nth-child(12),.proof-table th:nth-child(13),.proof-table th:nth-child(14){width:130px}.proof-table th:nth-child(15),.proof-table th:nth-child(16),.proof-table th:nth-child(17),.proof-table th:nth-child(18){width:145px}.proof-table th:nth-child(21),.proof-table th:nth-child(22),.proof-table th:nth-child(23),.proof-table th:nth-child(24){width:130px}.proof-table th:nth-child(27){width:150px}.proof-table th:nth-child(33){width:190px}.proof-table th:last-child{width:230px}
+    .disengaged-table{min-width:1650px}.empty{padding:24px!important;text-align:center;color:#65727b}.tabs{display:flex;overflow-x:auto;padding:0 12px;background:#d9dee2;border-top:1px solid #aebbc3}.tab{border:0;border-right:1px solid #9eabb3;background:#e8ecef;padding:7px 13px;font-size:11px;cursor:pointer;white-space:nowrap;color:#263640}.tab.active{background:#fff;color:var(--blue);font-weight:700;border-top:3px solid var(--green);padding-top:4px}
+    dialog{border:0;border-radius:7px;padding:0;width:min(620px,calc(100vw - 30px));box-shadow:0 12px 45px #0005}dialog.wide{width:min(760px,calc(100vw - 30px));max-height:92vh;overflow:auto}dialog::backdrop{background:#132536aa}.dialog-title{margin:0;background:var(--navy);color:#fff;padding:12px 16px;font-size:15px}.dialog-body{padding:14px}.dialog-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.dialog-grid .full{grid-column:1/-1}.dialog-grid label{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:10px;color:#52616d}.dialog-grid input,.dialog-grid select,.dialog-grid textarea{border:1px solid #9babb6;border-radius:4px;padding:7px;background:#fff}.dialog-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:14px}.dialog-section{border:1px solid #c5d0d7;border-radius:5px;padding:12px;margin-bottom:12px}.dialog-section h3{margin:0 0 9px;color:var(--navy);font-size:12px;text-transform:uppercase}.lookup-row{display:grid;grid-template-columns:1fr auto;gap:8px}.lookup-row input{border:1px solid #9babb6;border-radius:4px;padding:7px;text-transform:uppercase}.form-status{min-height:16px;margin:8px 0 0;font-size:10px}.form-status.error{color:var(--red)}.form-status.ok{color:var(--green)}
+    @media(max-width:800px){.workbook{padding:8px 8px 0}.sheet-title{font-size:16px}.cards{grid-template-columns:repeat(5,150px)}.dialog-grid{grid-template-columns:1fr}.dialog-grid .full{grid-column:auto}.result-count{width:100%;margin:0}.lookup-row{grid-template-columns:1fr}}
+    @media print{.topbar,.toast,.tabs,.toolbar,.action-col{display:none!important}.workbook{padding:0}.sheet{display:none!important;border:0;box-shadow:none}.sheet.active{display:block!important}.table-wrap{max-height:none;overflow:visible}table{min-width:0;font-size:7px}.sheet-title{font-size:14px}thead th{position:static}.editable input,.editable select,.editable textarea{font-size:7px}.summary-body{padding:8px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <span class="brand">Gestão de Contratos</span>
+    <a class="btn btn-secondary" href="index.html" aria-label="Voltar ao Dashboard">Dashboard</a>
+    <label for="employeeId">ID do colaborador</label>
+    <input id="employeeId" class="id-input" placeholder="Ex.: VIV240401001" autocomplete="off">
+    <button id="searchBtn" class="btn btn-primary" type="button">Buscar</button>
+    <button id="addPersonBtn" class="btn btn-primary" type="button">Adicionar colaborador</button>
+    <button id="printBtn" class="btn btn-secondary" type="button">Imprimir</button>
+  </header>
+  <div id="message" class="toast" hidden role="status" aria-live="polite"></div>
+  <main id="workbook" class="workbook"></main>
+  <nav id="tabs" class="tabs" aria-label="Folhas da gestão de contratos"></nav>
+</div>
+
+<dialog id="personDialog" class="wide">
+  <h2 class="dialog-title">Adicionar colaborador</h2>
+  <div class="dialog-body">
+    <section class="dialog-section">
+      <h3>Puxar colaborador por ID</h3>
+      <form id="lookupPersonForm" class="lookup-row">
+        <input id="lookupPersonId" placeholder="Ex.: VIV240401001" autocomplete="off" required>
+        <button type="submit" class="btn btn-primary">Puxar ID</button>
+      </form>
+      <p id="lookupStatus" class="form-status"></p>
+    </section>
+    <section class="dialog-section">
+      <h3>Novo cadastro</h3>
+      <form id="newPersonForm">
+        <div class="dialog-grid">
+          <label class="full">Código ID<input id="newPersonId" placeholder="Deixe vazio para gerar automaticamente" autocomplete="off"></label>
+          <label class="full">Nome Completo<input id="newPersonName" required></label>
+          <label>Categoria Profissional<select id="newPersonCategory" required>
+            <option value="">Seleccione</option><option>Oficial de M &amp; A</option><option>Supervisor Distrital</option><option>Conselheiro(a) Leigo(a)</option><option>Paralegal</option><option>Conselheiro(a) Leigo(a) Reclusos</option><option>HSH Paralegal</option><option>Director Executivo</option><option>Oficial de Finanças</option><option>Serevente</option><option>Oficial de Programas</option><option>HSH Conselheiros</option><option>Educadora de pare</option><option>Motorista</option>
+          </select></label>
+          <label>NIB<input id="newPersonNib"></label>
+          <label>Distrito Operacional<select id="newPersonDistrict" required>
+            <option value="">Seleccione</option><option>Tete</option><option>Moatize</option><option>Chifunde</option><option>Changara</option><option>Angonia</option><option>Cahora Bassa</option><option>Mutarara</option><option>Sede</option><option>Marara</option><option>Macanga</option><option>Zumbo</option><option>Mágoè</option><option>Tsangano</option><option>Doa</option><option>Chimoio</option><option>Manica</option><option>Gondola</option><option>Sussundenga</option><option>Mossurize</option><option>Báruè</option><option>Macate</option><option>Vanduzi</option><option>Guro</option><option>Tambara</option><option>Macossa</option>
+          </select></label>
+          <label>Grupo Target Alvo<select id="newPersonGroup" required><option value="">Seleccione</option><option>Staff</option><option>MTS</option><option>Reclusos</option><option>HSH</option><option>HSH e TG</option></select></label>
+          <label>Vínculo Contratual<select id="newPersonContractType" required><option>Não informado</option><option>Indeterminado</option><option>A Prazo</option></select></label>
+          <label>Data de Admissão<input id="newPersonAdmission" type="date"></label>
+          <label>Nº Renovações<input id="newPersonRenewals" type="number" min="0" value="0"></label>
+          <label>Férias Acumuladas<input id="newPersonLeaveBalance" type="number" min="0" value="0"></label>
+          <label>Faltas Injustificadas Iniciais<input id="newPersonAbsences" type="number" min="0" value="0"></label>
+        </div>
+        <p id="newPersonStatus" class="form-status"></p>
+        <div class="dialog-actions"><button type="button" id="cancelPerson" class="btn btn-secondary">Cancelar</button><button type="submit" id="savePersonBtn" class="btn btn-primary">Guardar na Gestão de Férias</button></div>
+      </form>
+    </section>
+  </div>
+</dialog>
+
+<dialog id="unlinkDialog">
+  <h2 class="dialog-title">Registar desvinculação</h2>
+  <form id="unlinkForm" class="dialog-body" method="dialog">
+    <input type="hidden" id="unlinkId">
+    <p id="unlinkPerson" style="margin-top:0;font-weight:700"></p>
+    <div class="dialog-grid">
+      <label>Data da desvinculação<input id="unlinkDate" type="date" required></label>
+      <label>Último dia de trabalho<input id="unlinkLastDay" type="date" required></label>
+      <label class="full">Motivo<select id="unlinkReason" required><option value="">Seleccione</option><option>Iniciativa da empresa</option><option>Iniciativa do trabalhador</option><option>Fim antecipado do contrato</option><option>Falecimento</option><option>Outro</option></select></label>
+      <label class="full">Responsável pela confirmação<input id="unlinkResponsible" required></label>
+      <label class="full">Observações<textarea id="unlinkNotes" rows="3"></textarea></label>
+    </div>
+    <div class="dialog-actions"><button type="button" id="cancelUnlink" class="btn btn-secondary">Cancelar</button><button type="submit" class="btn btn-danger">Confirmar desvinculação</button></div>
+  </form>
+</dialog>
+
+<dialog id="renewDialog">
+  <h2 class="dialog-title">Renovar contrato terminado</h2>
+  <form id="renewForm" class="dialog-body">
+    <input type="hidden" id="renewId">
+    <p id="renewPerson" style="margin-top:0;font-weight:700"></p>
+    <div class="dialog-grid">
+      <label>Data da renovação/início vigente<input id="renewStart" type="date" required></label>
+      <label>Nova data de fim<input id="renewEnd" type="date" required></label>
+      <label class="full">Responsável pela renovação<input id="renewResponsible" required></label>
+    </div>
+    <div class="dialog-actions"><button type="button" id="cancelRenew" class="btn btn-secondary">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar renovação</button></div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const BASE_DISTRICTS=["Tete","Moatize","Chifunde","Changara","Angónia","Cahora Bassa","Mutarara","Sede"];
+  const TABS=["Resumo","Checklist de Contratos","Prova de Vida","Desvinculados"];
+  const CONTRACT_KEY="andaGestaoContratos_v2",PROOF_KEY="andaProvaVida_v1",UNLINK_KEY="andaDesvinculados_v1";
+  const RH_KEYS=["andaDadosRHProjectos_listaCompleta20260721_v3","andaDadosRHProjectos_listaCompleta20260721_v2","andaDadosRHProjectos","andaRHProjectos"];
+  const RH_PRIMARY_KEY=RH_KEYS[0],NEON_WORKER_URL="https://anda-neon.rodriguestiago-anda.workers.dev";
+  const state={people:[],districts:[...BASE_DISTRICTS],contracts:load(CONTRACT_KEY),proofs:load(PROOF_KEY),unlinks:load(UNLINK_KEY),active:"Resumo",filters:{district:"",category:"",group:""},sourceLive:false};
+  let rhSqlState={database:null,version:null},messageTimer=null,sqlRefreshBusy=false;
+
+  function parse(v){try{return JSON.parse(v)}catch{return null}}
+  function load(key){const v=parse(localStorage.getItem(key));return v&&typeof v==="object"?v:{}}
+  function save(key,value){localStorage.setItem(key,JSON.stringify(value))}
+  function esc(v){return String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
+  function cleanDistrict(value){const raw=String(value||"").trim(),key=raw.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();return ({"angonia":"Angónia","cahora bassa":"Cahora Bassa","tete":"Tete","moatize":"Moatize","chifunde":"Chifunde","changara":"Changara","mutarara":"Mutarara","sede":"Sede"})[key]||raw}
+  function isoDate(value){
+    const raw=String(value||"").trim();if(!raw)return "";if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+    const m=raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);if(!m)return raw;
+    let a=+m[1],b=+m[2],month,day;if(b>12){month=a;day=b}else if(a>12){day=a;month=b}else{day=a;month=b}
+    return `${m[3]}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  }
+  function normalizeDatabase(db){
+    if(!db)return[];const list=Array.isArray(db)?db:(Array.isArray(db["VIVA+"])?db["VIVA+"]:(Array.isArray(db.VIVA)?db.VIVA:[]));
+    return list.map((p,index)=>({
+      id:String(p.id||p.ID||"").trim().toUpperCase(),numero:Number(p.numero)||Number(String(p.id||"").match(/(\d{3})$/)?.[1])||index+1,
+      nome:String(p.nome||p.nomeCompleto||p["Nome Completo"]||"").trim(),categoria:String(p.categoria||p.cargo||p.categoriaProfissional||p["Cargo/Função"]||"").trim(),
+      grupo:String(p.grupo||p.grupoAlvo||p.grupoTargetAlvo||p.Grupo||"").trim(),distrito:cleanDistrict(p.distrito||p.distritoOperacional||p.Distrito),
+      organizacao:String(p.organizacao||p.organização||"ANDA").trim(),dataNascimento:isoDate(p.dataNascimento||p.data_nascimento||p.nascimento),numeroBI:String(p.numeroBI||p.numeroBi||p.numero_bi||p.bi||p.passaporte||"").trim(),
+      validadeBI:isoDate(p.validadeBI||p.validade_bi||p.dataValidadeBI),nib:String(p.nib||p.NIB||p.numeroConta||p.contaBancaria||"").trim(),banco:String(p.banco||"").trim(),
+      vinculo:String(p.vinculo||p.vinculoContratual||p.tipoContrato||"").trim(),dataAdmissao:isoDate(p.dataAdmissao||p.dataAdmissaoInicial||p.inicioContrato),
+      nrRenovacoes:Number(p.nrRenovacoes??p.numeroRenovacoes??p.numeroDeRenovacoes??p.renovacoes??0)||0,nuit:String(p.nuit||p.NUIT||"").trim(),habilitacoes:String(p.habilitacoes||p.habilitacoesAcademicas||"").trim(),
+      telefone:String(p.telefone||p.nrTelefone||p.contacto||"").trim(),provincia:String(p.provincia||"Tete").trim(),
+      desvinculacoes:Array.isArray(p.desvinculacoes)?p.desvinculacoes:[],alocacoes:Array.isArray(p.alocacoes)?p.alocacoes:[]
+    })).filter(p=>p.id&&p.nome&&p.distrito);
+  }
+  function findRhDatabase(){const candidates=[];try{candidates.push(window.bancoDadosPorProjecto)}catch{}try{if(window.parent!==window)candidates.push(window.parent.bancoDadosPorProjecto)}catch{}RH_KEYS.forEach(k=>{const v=parse(localStorage.getItem(k));if(v)candidates.push(v)});for(const db of candidates){const people=normalizeDatabase(db);if(people.length)return people}return[]}
+  async function neonQueryRH(sql,params=[]){
+    const response=await Promise.race([fetch(NEON_WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sql,params})}),new Promise((_,reject)=>setTimeout(()=>reject(new Error("Tempo de ligação à base de dados excedido.")),12000))]);
+    if(!response.ok)throw new Error("A base de dados recusou a operação.");const data=await response.json();return data.rows||[];
+  }
+  function sessionUser(){try{return JSON.parse(sessionStorage.getItem("anda_user")||"{}")}catch{return{}}}
+  async function fetchRhSqlState(){
+    const rows=await neonQueryRH(`SELECT e.dados, e.versao FROM rh_estado_modulo e JOIN rh_projectos p ON p.id=e.projecto_id WHERE p.codigo=$1`,["VIVA+"]);if(!rows.length)throw new Error("O projecto VIVA+ não foi encontrado na base da Gestão de Férias.");
+    let database=rows[0].dados;if(typeof database==="string")database=JSON.parse(database);if(!database||typeof database!=="object")throw new Error("A base da Gestão de Férias não contém dados válidos.");rhSqlState={database,version:Number(rows[0].versao)};return rhSqlState;
+  }
+  function persistRhLocal(database){try{localStorage.setItem(RH_PRIMARY_KEY,JSON.stringify(database))}catch{}try{window.parent.postMessage({type:"ANDA_RH_DATA_UPDATED",database},"*")}catch{}}
+  async function loadPeople(){
+    const cached=findRhDatabase();if(cached.length)applyPeople(cached,false);
+    try{const remote=await fetchRhSqlState();applyPeople(normalizeDatabase(remote.database),true);persistRhLocal(remote.database);return}catch(error){if(!cached.length){try{const response=await fetch("/colaboradores_fallback.json",{cache:"no-store"});applyPeople(normalizeDatabase(await response.json()),false)}catch{applyPeople([],false);setMessage("Não foi possível carregar a base de colaboradores.","error")}}}
+    try{window.parent.postMessage({type:"ANDA_REQUEST_RH_DATA",projecto:"VIVA+"},"*")}catch{}
+  }
+  async function refreshPeopleFromSql(){if(sqlRefreshBusy)return;sqlRefreshBusy=true;try{const remote=await fetchRhSqlState();persistRhLocal(remote.database);applyPeople(normalizeDatabase(remote.database),true)}finally{sqlRefreshBusy=false}}
+  function applyPeople(people,live){
+    state.people=people.sort((a,b)=>a.numero-b.numero);const baseKeys=new Set(BASE_DISTRICTS.map(keyOf)),seen=new Set(baseKeys),extra=[];state.people.forEach(p=>{const k=keyOf(p.distrito);if(!seen.has(k)){seen.add(k);extra.push(p.distrito)}});extra.sort((a,b)=>a.localeCompare(b,"pt"));state.districts=[...BASE_DISTRICTS,...extra];state.sourceLive=live;
+    render();
+  }
+  function keyOf(v){return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
+  function contract(id){return state.contracts[id]||{}}
+  function proof(id){return state.proofs[id]||{}}
+  function formatDate(value){if(!value)return"";const d=new Date(value+"T00:00:00");return Number.isNaN(d.getTime())?value:d.toLocaleDateString("pt-PT")}
+  function todayIso(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+  function age(dob){if(!dob)return"";const d=new Date(dob+"T00:00:00"),t=new Date();if(Number.isNaN(d.getTime()))return"";let n=t.getFullYear()-d.getFullYear();if(t.getMonth()<d.getMonth()||(t.getMonth()===d.getMonth()&&t.getDate()<d.getDate()))n--;return n>=0?n:""}
+  function sqlUnlink(person){
+    if(!person.desvinculacoes?.length)return null;const records=[...person.desvinculacoes].sort((a,b)=>String(b.registadoEm||"").localeCompare(String(a.registadoEm||""))),latest=records[0]||{},closedAlloc=[...(person.alocacoes||[])].filter(item=>item.fim).sort((a,b)=>String(b.fim).localeCompare(String(a.fim)))[0]||{};
+    return{active:true,automatic:false,source:"sql",data:isoDate(latest.dataEfectiva||latest.dataAviso||closedAlloc.fim),ultimoDia:isoDate(latest.ultimoDiaTrabalho||latest.dataEfectiva||closedAlloc.fim),motivo:String(latest.motivo||closedAlloc.motivoFim||"Desvinculação registada").trim(),responsavel:String(latest.registadoPor||"Gestão de Férias e Faltas").trim(),observacoes:"Sincronizado automaticamente pela Gestão de Férias e Faltas."};
+  }
+  function autoUnlink(person){const end=contract(person.id).dataTermino;if(!end)return null;const d=new Date(end+"T00:00:00"),today=new Date();today.setHours(0,0,0,0);return !Number.isNaN(d.getTime())&&d<today?{automatic:true,data:end,ultimoDia:end,motivo:"Fim do contrato",responsavel:"Sistema",observacoes:"Desvinculação automática por término do contrato."}:null}
+  function unlinkInfo(person){const fromSql=sqlUnlink(person),manual=state.unlinks[person.id];return fromSql||(manual&&manual.active?manual:autoUnlink(person))}
+  function activePeople(){return state.people.filter(p=>!unlinkInfo(p))}
+  function disengagedPeople(){return state.people.map(p=>({person:p,unlink:unlinkInfo(p)})).filter(x=>x.unlink)}
+  function statusFor(id){
+    const r=contract(id),today=new Date();today.setHours(0,0,0,0);if(!r.contratoDisponivel||r.contratoDisponivel==="Por verificar")return"Por verificar";if(r.contratoDisponivel==="Não")return"Sem contrato";
+    if(!r.assinaturaColaborador||!r.assinaturaAnda||r.assinaturaColaborador==="Por verificar"||r.assinaturaAnda==="Por verificar")return"Por verificar";if(r.assinaturaColaborador==="Não"||r.assinaturaAnda==="Não")return"Falta assinatura";if(!r.dataInicio||!r.dataTermino)return"Datas incompletas";
+    const end=new Date(r.dataTermino+"T00:00:00");if(Number.isNaN(end.getTime()))return"Datas incompletas";if(end<today)return"Expirado";const limit=new Date(today);limit.setDate(limit.getDate()+45);if(end<=limit)return"Expira em 45 dias";
+    if(!r.copiaEntregue||r.copiaEntregue==="Por verificar")return"Por verificar";if(r.copiaEntregue==="Não")return"Falta cópia";return"Regular";
+  }
+  function stateClass(s){return s==="Regular"?"regular":s==="Por verificar"?"":s==="Expira em 45 dias"||s==="Datas incompletas"?"warning":"problem"}
+  function option(value,current,label=value){return `<option value="${esc(value)}"${value===current?" selected":""}>${esc(label)}</option>`}
+  function choice(id,field,label,values=["Sim","Não","Por verificar"]){const current=contract(id)[field]||"";return `<select data-store="contract" data-id="${esc(id)}" data-field="${field}" aria-label="${esc(label)}">${option("",current,"Seleccione")}${values.map(v=>option(v,current)).join("")}</select>`}
+  function cInput(id,field,type,label){return `<input type="${type}" value="${esc(contract(id)[field]||"")}" data-store="contract" data-id="${esc(id)}" data-field="${field}" aria-label="${esc(label)}">`}
+  function pChoice(id,field,label,values){const current=proof(id)[field]||"";return `<select data-store="proof" data-id="${esc(id)}" data-field="${field}" aria-label="${esc(label)}">${option("",current,"Seleccione")}${values.map(v=>option(v,current)).join("")}</select>`}
+  function pInput(id,field,type,label,defaultValue=""){const value=proof(id)[field]??defaultValue;return `<input type="${type}" value="${esc(value)}" data-store="proof" data-id="${esc(id)}" data-field="${field}" aria-label="${esc(label)}">`}
+  function filteredPeople(){return activePeople().filter(p=>(!state.filters.district||p.distrito===state.filters.district)&&(!state.filters.category||p.categoria===state.filters.category)&&(!state.filters.group||p.grupo===state.filters.group))}
+  function unique(field){return [...new Set(activePeople().map(p=>p[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt"))}
+  function filterToolbar(extra=""){
+    const select=(field,label,values)=>`<div class="field"><label>${label}</label><select data-filter="${field}">${option("",state.filters[field],"Todos")}${values.map(v=>option(v,state.filters[field])).join("")}</select></div>`;
+    return `<div class="toolbar">${select("district","Distrito",unique("distrito"))}${select("category","Cargo/Função",unique("categoria"))}${select("group","Grupo",unique("grupo"))}<button type="button" class="btn btn-secondary" id="clearFilters">Limpar filtros</button>${extra}<span class="result-count">${filteredPeople().length} colaborador(es)</span></div>`;
+  }
+  function checklistSheet(){
+    const rows=filteredPeople().map(p=>{const s=statusFor(p.id);return `<tr data-person-id="${esc(p.id)}"><td class="fixed number">${p.numero}</td><td class="fixed center">${esc(p.id)}</td><td class="fixed">${esc(p.nome)}</td><td class="fixed">${esc(p.categoria)}</td><td class="fixed group">${esc(p.grupo)}</td><td class="fixed center">${esc(p.distrito)}</td><td class="editable">${choice(p.id,"contratoDisponivel",`Contrato disponível de ${p.nome}`)}</td><td class="editable">${choice(p.id,"assinaturaColaborador",`Assinatura do colaborador de ${p.nome}`)}</td><td class="editable">${choice(p.id,"assinaturaAnda",`Assinatura da ANDA de ${p.nome}`)}</td><td class="editable">${cInput(p.id,"dataInicio","date",`Data de renovação/início de ${p.nome}`)}</td><td class="editable">${cInput(p.id,"dataTermino","date",`Fim do contrato de ${p.nome}`)}</td><td class="editable">${choice(p.id,"copiaEntregue",`Cópia entregue de ${p.nome}`)}</td><td class="state-cell ${stateClass(s)}">${esc(s)}</td><td class="editable">${cInput(p.id,"responsavel","text",`Responsável pela verificação de ${p.nome}`)}</td><td class="editable"><textarea data-store="contract" data-id="${esc(p.id)}" data-field="observacoes" aria-label="Observações de ${esc(p.nome)}">${esc(contract(p.id).observacoes||"")}</textarea></td><td class="center action-col"><button type="button" class="btn btn-danger btn-small" data-unlink="${esc(p.id)}">Desvincular</button></td></tr>`}).join("");
+    return `<section class="sheet${state.active==="Checklist de Contratos"?" active":""}" data-sheet="Checklist de Contratos"><h1 class="sheet-title">CHECKLIST DE CONTRATOS</h1><p class="sheet-subtitle">Todos os distritos numa única folha. Os filtros de distrito, cargo/função e grupo podem ser utilizados em conjunto.</p>${filterToolbar()}<div class="table-wrap"><table class="data-table checklist-table"><thead><tr><th>Nº</th><th>ID</th><th>Nome Completo</th><th>Cargo/Função</th><th>Grupo</th><th>Distrito</th><th>Contrato disponível?</th><th>Assinatura do colaborador?</th><th>Assinatura da ANDA?</th><th>Data de renovação/início vigente</th><th>Fim do contrato</th><th>Cópia entregue?</th><th>Estado automático</th><th>Responsável pela verificação</th><th>Observações</th><th class="action-col">Acção</th></tr></thead><tbody>${rows||`<tr><td colspan="16" class="empty">Nenhum colaborador corresponde aos filtros.</td></tr>`}</tbody></table></div></section>`;
+  }
+  function summaryCounts(list){const out={total:list.length,confirmed:0,alert:0,regular:0,verify:0,noContract:0};list.forEach(p=>{const s=statusFor(p.id);if(contract(p.id).contratoDisponivel==="Sim")out.confirmed++;if(s==="Expira em 45 dias")out.alert++;if(s==="Regular")out.regular++;if(s==="Por verificar")out.verify++;if(s==="Sem contrato")out.noContract++});return out}
+  function summarySheet(){
+    const active=activePeople(),total=summaryCounts(active),unlinked=disengagedPeople();const districts=[...new Set([...state.districts,...state.people.map(p=>p.distrito)])].filter(Boolean);
+    const rows=districts.map(d=>{const a=active.filter(p=>p.distrito===d),c=summaryCounts(a),u=unlinked.filter(x=>x.person.distrito===d).length;return `<tr><td>${esc(d)}</td><td>${c.total}</td><td>${c.confirmed}</td><td>${c.alert}</td><td>${c.noContract}</td><td>${c.verify}</td><td>${c.regular}</td><td>${u}</td></tr>`}).join("");
+    return `<section class="sheet${state.active==="Resumo"?" active":""}" data-sheet="Resumo"><h1 class="sheet-title">CONTROLO GERAL DE CONTRATOS</h1><p class="sheet-subtitle">O controlo principal considera somente contratos activos. Os desvinculados são apresentados separadamente.</p><div class="summary-body"><div class="cards"><div class="card"><div class="card-label">CONTRATOS ACTIVOS</div><div class="card-value">${total.total}</div></div><div class="card green"><div class="card-label">CONTRATOS CONFIRMADOS</div><div class="card-value">${total.confirmed}</div></div><div class="card gold"><div class="card-label">EXPIRAM EM 45 DIAS</div><div class="card-value">${total.alert}</div></div><div class="card gold"><div class="card-label">POR VERIFICAR</div><div class="card-value">${total.verify}</div></div><div class="card red"><div class="card-label">DESVINCULADOS</div><div class="card-value">${unlinked.length}</div></div></div><table class="summary-table"><thead><tr><th>Distrito</th><th>Contratos activos</th><th>Confirmados</th><th>Expiram em 45 dias</th><th>Sem contrato</th><th>Por verificar</th><th>Regular</th><th>Desvinculados</th></tr></thead><tbody>${rows}<tr class="total"><td>TOTAL</td><td>${total.total}</td><td>${total.confirmed}</td><td>${total.alert}</td><td>${total.noContract}</td><td>${total.verify}</td><td>${total.regular}</td><td>${unlinked.length}</td></tr></tbody></table><div class="legend"><b>Legenda:</b><span><i class="swatch" style="background:#fff2cc"></i>Campo a preencher</span><span><i class="swatch" style="background:#d9ead3"></i>Regular</span><span><i class="swatch" style="background:#fff2cc"></i>Alerta de 45 dias</span><span><i class="swatch" style="background:#f4cccc"></i>Irregularidade ou desvinculação</span></div></div></section>`;
+  }
+  function proofSheet(){
+    const rows=filteredPeople().map(p=>{const pr=proof(p.id),r=contract(p.id),bank=[p.banco,p.nib].filter(Boolean).join(" - "),contractStatus=r.contratoDisponivel||"Por verificar",biStatus=p.numeroBI?"Sim":"Por verificar",automaticStatus=statusFor(p.id);return `<tr data-person-id="${esc(p.id)}"><td class="fixed number">${p.numero}</td><td class="fixed center">${esc(p.id)}</td><td class="fixed">${esc(p.nome)}</td><td class="fixed">${esc(bank)}</td><td class="editable">${pChoice(p.id,"situacao","Situação da prova de vida de "+p.nome,["Confirmada","Não confirmada","Por verificar"])}</td><td class="editable">${pInput(p.id,"dataProva","date","Data da última prova de vida de "+p.nome)}</td><td class="fixed center">${esc(formatDate(p.validadeBI))}</td><td class="fixed">${esc(p.organizacao)}</td><td class="fixed">${esc(p.categoria)}</td><td class="fixed center"><span class="status-chip ${contractStatus==="Sim"?"green":contractStatus==="Não"?"red":"gold"}">${esc(contractStatus)}</span></td><td class="fixed center">${esc(r.assinaturaColaborador||"Por verificar")}</td><td class="fixed center">${esc(r.assinaturaAnda||"Por verificar")}</td><td class="fixed center">${esc(r.copiaEntregue||"Por verificar")}</td><td class="state-cell ${stateClass(automaticStatus)}">${esc(automaticStatus)}</td><td class="fixed">${esc(r.responsavel||"")}</td><td class="fixed">${esc(r.observacoes||"")}</td><td class="fixed center"><span class="status-chip ${biStatus==="Sim"?"green":"gold"}">${biStatus}</span></td><td class="editable">${pChoice(p.id,"inss","INSS de "+p.nome,["Sim","Não","Por verificar","Não aplicável"])}</td><td class="editable">${pInput(p.id,"salario","number","Salário de "+p.nome)}</td><td class="editable">${pChoice(p.id,"jobDescription","Job Description de "+p.nome,["Sim","Não"])}</td><td class="fixed center">${esc(formatDate(p.dataAdmissao))}</td><td class="fixed center">${esc(formatDate(r.dataInicio))}</td><td class="fixed center">${p.nrRenovacoes}</td><td class="fixed center">${esc(formatDate(r.dataTermino))}</td><td class="fixed center">${esc(p.grupo)}</td><td class="editable">${pInput(p.id,"provincia","text","Província de "+p.nome,p.provincia||"Tete")}</td><td class="fixed center">${esc(p.distrito)}</td><td class="editable">${pInput(p.id,"bairro","text","Bairro/Localidade de "+p.nome)}</td><td class="fixed">${esc(p.numeroBI)}</td><td class="fixed center">${esc(formatDate(p.dataNascimento))}</td><td class="fixed center">${esc(age(p.dataNascimento))}</td><td class="fixed">${esc(p.nuit)}</td><td class="editable">${pInput(p.id,"habilitacoes","text","Habilitações de "+p.nome,p.habilitacoes)}</td><td class="editable">${pInput(p.id,"telefone","text","Telefone de "+p.nome,p.telefone)}</td><td class="editable"><textarea data-store="proof" data-id="${esc(p.id)}" data-field="observacoes" aria-label="Observações da prova de vida de ${esc(p.nome)}">${esc(pr.observacoes||"")}</textarea></td></tr>`}).join("");
+    const exportBtn='<button type="button" class="btn btn-primary" id="exportProof">Exportar Excel (.xls)</button>';
+    return `<section class="sheet${state.active==="Prova de Vida"?" active":""}" data-sheet="Prova de Vida"><h1 class="sheet-title">PROVA DE VIDA</h1><p class="sheet-subtitle">Dados gerais carregados pelo ID. Os campos amarelos são preenchidos na Prova de Vida.</p>${filterToolbar(exportBtn)}<div class="table-wrap"><table id="proofExportTable" class="data-table proof-table"><thead><tr><th colspan="9">DADOS GERAIS</th><th colspan="15">PROCESSOS INDIVIDUAIS E CONTRATO</th><th colspan="11">DADOS PESSOAIS E LOCALIZAÇÃO</th></tr><tr><th>Nr. Ord.</th><th>ID</th><th>Nome do Trabalhador/Activista</th><th>Número de conta Bancária e Banco</th><th>Situação da Prova de Vida</th><th>Data da última Prova de Vida</th><th>Data de Validade BI</th><th>Organização</th><th>Cargo/Função</th><th>Contrato</th><th>Assinatura do Colaborador</th><th>Assinatura da ANDA</th><th>Cópia Entregue</th><th>Estado Automático</th><th>Responsável pela Verificação</th><th>Observações do Contrato</th><th>BI</th><th>INSS</th><th>Valor do contrato (salário MZN)</th><th>Job Description</th><th>Data de Admissão Inicial</th><th>Data da Renovação</th><th>Nº de Renovações</th><th>Fim do Contrato</th><th>Grupo Alvo</th><th>Província</th><th>Distrito</th><th>Bairro/Localidade</th><th>BI/Passaporte</th><th>Data de Nascimento</th><th>Idade</th><th>NUIT</th><th>Habilitações Académicas</th><th>Nº de Telefone</th><th>Observações da Prova de Vida</th></tr></thead><tbody>${rows||`<tr><td colspan="35" class="empty">Nenhum colaborador corresponde aos filtros.</td></tr>`}</tbody></table></div></section>`;
+  }
+  function disengagedSheet(){
+    const rows=disengagedPeople().map(({person:p,unlink:u})=>{
+      const action=u.source==="sql"?'<span class="status-chip gold">Sincronizado com Férias/Faltas</span>':u.automatic?`<button type="button" class="btn btn-primary btn-small" data-renew="${esc(p.id)}">Renovar contrato</button>`:`<button type="button" class="btn btn-secondary btn-small" data-reactivate="${esc(p.id)}">Reactivar</button>`;
+      return `<tr data-person-id="${esc(p.id)}"><td class="fixed number">${p.numero}</td><td class="fixed center">${esc(p.id)}</td><td class="fixed">${esc(p.nome)}</td><td class="fixed">${esc(p.categoria)}</td><td class="fixed center">${esc(p.grupo)}</td><td class="fixed center">${esc(p.distrito)}</td><td class="fixed center">${esc(formatDate(contract(p.id).dataInicio))}</td><td class="fixed center">${esc(formatDate(contract(p.id).dataTermino))}</td><td class="fixed center">${esc(formatDate(u.data))}</td><td class="fixed center">${esc(formatDate(u.ultimoDia))}</td><td class="fixed">${esc(u.motivo)}</td><td class="fixed">${esc(u.responsavel)}</td><td class="fixed">${esc(u.observacoes)}</td><td class="center action-col">${action}</td></tr>`;
+    }).join("");
+    return `<section class="sheet${state.active==="Desvinculados"?" active":""}" data-sheet="Desvinculados"><h1 class="sheet-title">DESVINCULADOS</h1><p class="sheet-subtitle">Inclui contratos terminados automaticamente e desvinculações antecipadas por iniciativa da empresa ou do trabalhador.</p><div class="toolbar"><button type="button" class="btn btn-primary" id="openUnlink">Registar desvinculação por ID</button><span class="result-count">${disengagedPeople().length} colaborador(es)</span></div><div class="table-wrap"><table class="data-table disengaged-table"><thead><tr><th>Nº</th><th>ID</th><th>Nome Completo</th><th>Cargo/Função</th><th>Grupo</th><th>Distrito</th><th>Início/Renovação</th><th>Fim previsto</th><th>Data da desvinculação</th><th>Último dia de trabalho</th><th>Motivo</th><th>Responsável</th><th>Observações</th><th class="action-col">Situação/Acção</th></tr></thead><tbody>${rows||`<tr><td colspan="14" class="empty">Não existem colaboradores desvinculados.</td></tr>`}</tbody></table></div></section>`;
+  }
+  function databaseIds(database){const ids=new Set();Object.values(database||{}).forEach(list=>{if(Array.isArray(list))list.forEach(person=>{const id=String(person?.id||"").trim().toUpperCase();if(id)ids.add(id)})});return ids}
+  function uniquePersonId(database,admission){const date=(admission||todayIso()).replace(/-/g,"").slice(2),base=`VIV${date}`,used=databaseIds(database);let sequence=1;while(used.has(`${base}${String(sequence).padStart(3,"0")}`))sequence++;return `${base}${String(sequence).padStart(3,"0")}`}
+  async function updateRhDatabase(mutator){
+    for(let attempt=0;attempt<2;attempt++){
+      const current=await fetchRhSqlState(),database=JSON.parse(JSON.stringify(current.database)),result=mutator(database),user=sessionUser();
+      const rows=await neonQueryRH(`UPDATE rh_estado_modulo SET dados=$2::jsonb, versao=versao+1, actualizado_por=$4, actualizado_por_nome=$5, actualizado_em=NOW() WHERE projecto_id=(SELECT id FROM rh_projectos WHERE codigo=$1) AND versao=$3 RETURNING versao`,["VIVA+",JSON.stringify(database),current.version,user.id||null,user.nome||user.username||"sistema"]);
+      if(rows.length){rhSqlState={database,version:Number(rows[0].versao)};persistRhLocal(database);applyPeople(normalizeDatabase(database),true);return result}
+    }
+    throw new Error("Os dados foram alterados por outro utilizador. Tente guardar novamente.");
+  }
+  function setFormStatus(id,text,type=""){const el=document.getElementById(id);el.textContent=text;el.className=`form-status${type?" "+type:""}`}
+  function openPersonDialog(){document.getElementById("lookupPersonForm").reset();document.getElementById("newPersonForm").reset();setFormStatus("lookupStatus","");setFormStatus("newPersonStatus","");document.getElementById("personDialog").showModal()}
+  async function pullPersonById(event){
+    event.preventDefault();const input=document.getElementById("lookupPersonId"),id=input.value.trim().toUpperCase();setFormStatus("lookupStatus","A procurar…");
+    try{const remote=await fetchRhSqlState(),people=normalizeDatabase(remote.database),person=people.find(item=>item.id===id);if(!person){setFormStatus("lookupStatus",`ID ${id} não encontrado na Gestão de Férias.`,"error");return}persistRhLocal(remote.database);applyPeople(people,true);document.getElementById("employeeId").value=id;document.getElementById("personDialog").close();state.active=unlinkInfo(person)?"Desvinculados":"Checklist de Contratos";state.filters={district:"",category:"",group:""};render();highlight(id);setMessage(`${person.nome} foi carregado pela Gestão de Férias.`,"ok")}catch(error){setFormStatus("lookupStatus",error.message||"Não foi possível consultar a Gestão de Férias.","error")}
+  }
+  async function saveNewPerson(event){
+    event.preventDefault();const button=document.getElementById("savePersonBtn");button.disabled=true;button.textContent="A guardar…";setFormStatus("newPersonStatus","");
+    try{
+      const admission=document.getElementById("newPersonAdmission").value,manualId=document.getElementById("newPersonId").value.trim().toUpperCase();if(manualId&&!/^[A-Z0-9_-]+$/.test(manualId))throw new Error("O ID só pode conter letras, números, hífen ou sublinhado.");
+      const id=await updateRhDatabase(database=>{if(!Array.isArray(database["VIVA+"]))database["VIVA+"]=[];const used=databaseIds(database),personId=manualId||uniquePersonId(database,admission);if(used.has(personId))throw new Error(`O ID ${personId} já pertence a outro colaborador.`);database["VIVA+"].push({id:personId,nome:document.getElementById("newPersonName").value.trim().toUpperCase(),categoria:document.getElementById("newPersonCategory").value,nib:document.getElementById("newPersonNib").value.trim(),projecto:"VIVA+",distrito:document.getElementById("newPersonDistrict").value,grupo:document.getElementById("newPersonGroup").value,tipoContrato:document.getElementById("newPersonContractType").value,data_admissao:admission,numRenovacoes:Number(document.getElementById("newPersonRenewals").value)||0,saldoFeriasAcumulado:Number(document.getElementById("newPersonLeaveBalance").value)||0,faltasHistoricas:Number(document.getElementById("newPersonAbsences").value)||0,faltasMensais:{},feriasMapeadas:{},pedidosFerias:[]});return personId});
+      document.getElementById("employeeId").value=id;document.getElementById("personDialog").close();state.active="Checklist de Contratos";state.filters={district:"",category:"",group:""};render();highlight(id);setMessage(`Colaborador ${id} guardado na mesma base da Gestão de Férias.`,"ok");
+    }catch(error){setFormStatus("newPersonStatus",error.message||"Não foi possível guardar o colaborador.","error")}finally{button.disabled=false;button.textContent="Guardar na Gestão de Férias"}
+  }
+  function render(){document.getElementById("workbook").innerHTML=summarySheet()+checklistSheet()+proofSheet()+disengagedSheet();document.getElementById("tabs").innerHTML=TABS.map(name=>`<button type="button" class="tab${state.active===name?" active":""}" data-tab="${esc(name)}">${esc(name)}</button>`).join("")}
+  function setMessage(text,type=""){const el=document.getElementById("message");clearTimeout(messageTimer);el.textContent=text;el.className="toast"+(type?" "+type:"");el.hidden=false;messageTimer=setTimeout(()=>{el.hidden=true},4200)}
+  function activate(name){state.active=name;render()}
+  function highlight(id){requestAnimationFrame(()=>{const row=document.querySelector(`.sheet.active [data-person-id="${CSS.escape(id)}"]`);if(row){row.classList.add("flash");row.scrollIntoView({behavior:"smooth",block:"center"})}})}
+  async function search(){const id=document.getElementById("employeeId").value.trim().toUpperCase();if(!id){setMessage("Informe o ID do colaborador.","error");return}try{await refreshPeopleFromSql()}catch{}const p=state.people.find(x=>x.id===id);if(!p){setMessage(`ID ${id} não encontrado na base da Gestão de Férias.`,"error");return}if(unlinkInfo(p))state.active="Desvinculados";else if(state.active!=="Prova de Vida")state.active="Checklist de Contratos";state.filters={district:"",category:"",group:""};render();highlight(id);setMessage(`${p.nome} — ${p.categoria} — ${p.grupo} | ${p.distrito}`,"ok")}
+  function openUnlink(id=""){const typed=id||document.getElementById("employeeId").value.trim().toUpperCase();const p=state.people.find(x=>x.id===typed);if(!p){setMessage("Pesquise ou informe um ID activo antes de registar a desvinculação.","error");return}if(unlinkInfo(p)){setMessage("Este colaborador já se encontra na lista de desvinculados.","error");return}document.getElementById("unlinkId").value=p.id;document.getElementById("unlinkPerson").textContent=`${p.id} — ${p.nome}`;document.getElementById("unlinkDate").value=todayIso();document.getElementById("unlinkLastDay").value=todayIso();document.getElementById("unlinkReason").value="";document.getElementById("unlinkResponsible").value="";document.getElementById("unlinkNotes").value="";document.getElementById("unlinkDialog").showModal()}
+  function openRenew(id){const p=state.people.find(x=>x.id===id);if(!p)return;document.getElementById("renewId").value=id;document.getElementById("renewPerson").textContent=`${p.id} — ${p.nome}`;document.getElementById("renewStart").value=todayIso();document.getElementById("renewEnd").value="";document.getElementById("renewResponsible").value="";document.getElementById("renewEnd").min=todayIso();document.getElementById("renewDialog").showModal()}
+  function exportProof(){
+    const original=document.getElementById("proofExportTable"),clone=original.cloneNode(true),sourceControls=original.querySelectorAll("input,select,textarea"),cloneControls=clone.querySelectorAll("input,select,textarea");cloneControls.forEach((control,i)=>{const source=sourceControls[i],value=source.tagName==="SELECT"?source.options[source.selectedIndex]?.text||"":source.value;control.replaceWith(document.createTextNode(value))});clone.querySelectorAll("th,td").forEach(cell=>cell.setAttribute("style","border:1px solid #8fa8b5;padding:5px 6px;vertical-align:middle;"+(cell.tagName==="TH"?"background:#1f4e78;color:#ffffff;font-weight:bold;text-align:center;":"")));
+    const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><style>table{border-collapse:collapse;font-family:Calibri,Arial;font-size:9pt}th{white-space:normal}.editable{background:#fff2cc}.fixed{background:#ffffff}</style></head><body><h2>PROVA DE VIDA</h2>${clone.outerHTML}</body></html>`;const blob=new Blob(["\ufeff",html],{type:"application/vnd.ms-excel;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`Prova_de_Vida_${todayIso()}.xls`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage("Prova de Vida exportada para Excel com a mesma estrutura da tabela.","ok")
+  }
+  document.addEventListener("click",event=>{
+    const tab=event.target.closest("[data-tab]");if(tab){activate(tab.dataset.tab);return}if(event.target.id==="searchBtn")search();if(event.target.id==="addPersonBtn")openPersonDialog();if(event.target.id==="cancelPerson")document.getElementById("personDialog").close();if(event.target.id==="printBtn")window.print();if(event.target.id==="clearFilters"){state.filters={district:"",category:"",group:""};render()}if(event.target.id==="exportProof")exportProof();if(event.target.id==="openUnlink")openUnlink();if(event.target.id==="cancelUnlink")document.getElementById("unlinkDialog").close();
+    const unlink=event.target.closest("[data-unlink]");if(unlink)openUnlink(unlink.dataset.unlink);const renew=event.target.closest("[data-renew]");if(renew)openRenew(renew.dataset.renew);const reactivate=event.target.closest("[data-reactivate]");if(reactivate){delete state.unlinks[reactivate.dataset.reactivate];save(UNLINK_KEY,state.unlinks);render();setMessage("Colaborador reactivado. Confirme também as novas datas do contrato no Checklist.","ok")}if(event.target.id==="cancelRenew")document.getElementById("renewDialog").close();
+  });
+  document.addEventListener("change",event=>{
+    const filter=event.target.closest("[data-filter]");if(filter){state.filters[filter.dataset.filter]=filter.value;render();return}const el=event.target.closest("[data-store][data-id][data-field]");if(!el)return;const id=el.dataset.id,field=el.dataset.field;if(el.dataset.store==="contract"){state.contracts[id]={...contract(id),[field]:el.value,updatedAt:new Date().toISOString()};save(CONTRACT_KEY,state.contracts);if(field==="dataTermino"){render();setMessage("Data do contrato actualizada; os alertas e a situação do vínculo foram recalculados.","ok");return}const row=el.closest("tr"),cell=row?.querySelector(".state-cell");if(cell){const s=statusFor(id);cell.textContent=s;cell.className=`state-cell ${stateClass(s)}`}}else{state.proofs[id]={...proof(id),[field]:el.value,updatedAt:new Date().toISOString()};save(PROOF_KEY,state.proofs)}
+  });
+  document.getElementById("unlinkForm").addEventListener("submit",event=>{event.preventDefault();const id=document.getElementById("unlinkId").value;state.unlinks[id]={active:true,automatic:false,data:document.getElementById("unlinkDate").value,ultimoDia:document.getElementById("unlinkLastDay").value,motivo:document.getElementById("unlinkReason").value,responsavel:document.getElementById("unlinkResponsible").value,observacoes:document.getElementById("unlinkNotes").value,updatedAt:new Date().toISOString()};save(UNLINK_KEY,state.unlinks);document.getElementById("unlinkDialog").close();state.active="Desvinculados";render();highlight(id);setMessage("Desvinculação registada com sucesso.","ok")});
+  document.getElementById("renewForm").addEventListener("submit",event=>{event.preventDefault();const id=document.getElementById("renewId").value,start=document.getElementById("renewStart").value,end=document.getElementById("renewEnd").value;if(end<todayIso()){setMessage("A nova data de fim deve ser posterior à data actual.","error");return}state.contracts[id]={...contract(id),dataInicio:start,dataTermino:end,responsavel:document.getElementById("renewResponsible").value,updatedAt:new Date().toISOString()};save(CONTRACT_KEY,state.contracts);document.getElementById("renewDialog").close();state.active="Checklist de Contratos";render();highlight(id);setMessage("Contrato renovado e colaborador devolvido à lista de activos.","ok")});
+  document.getElementById("lookupPersonForm").addEventListener("submit",pullPersonById);
+  document.getElementById("newPersonForm").addEventListener("submit",saveNewPerson);
+  document.getElementById("employeeId").addEventListener("keydown",e=>{if(e.key==="Enter")search()});
+  window.addEventListener("message",event=>{const data=event.data||{};if(data.type==="ANDA_RH_DATA"||data.type==="anda:rh-data"){const people=normalizeDatabase(data.database||data.data||data.payload);if(people.length)applyPeople(people,true)}});window.addEventListener("storage",event=>{if(RH_KEYS.includes(event.key)){const people=findRhDatabase();if(people.length)applyPeople(people,true)}});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshPeopleFromSql().catch(()=>{})});setInterval(()=>refreshPeopleFromSql().catch(()=>{}),60000);
+  loadPeople();
+})();
+</script>
+</body>
+</html>
