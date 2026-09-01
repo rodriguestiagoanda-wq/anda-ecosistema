@@ -1273,7 +1273,7 @@ async function supaUpsert(table, body, onConflict) {
         <div style="font-size:7pt;">Data: ___/___/______</div>
       </div>
       <div class="sign-block" id="elabSignBlock">
-        <div id="footerElabRole" style="font-size:7.5pt;margin-bottom:32px;">Elaborado por</div>
+        <div id="footerElabRole" style="font-size:7.5pt;margin-bottom:32px;">Aprovação</div>
         <div class="sign-line"></div>
         <div id="footerElab" style="font-size:7.5pt;">___________________________</div>
         <div style="font-size:7pt;">Data: ___/___/______</div>
@@ -1721,7 +1721,7 @@ function buildSheet() {
     // Update the role label for the elaborado person
     const elabPerson = colaboradores.find(function(c) { return c.nome === elabVal; });
     if (document.getElementById('footerElabRole') && elabVal) {
-      document.getElementById('footerElabRole').textContent = elabPerson ? (elabPerson.cargo || 'Elaborado por') : 'Elaborado por';
+      document.getElementById('footerElabRole').textContent = elabPerson ? (elabPerson.cargo || 'Aprovação') : 'Aprovação';
     }
   }
   // Show/hide second sign block based on whether elaborado is set
