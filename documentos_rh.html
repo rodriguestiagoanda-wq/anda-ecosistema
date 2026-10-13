@@ -221,32 +221,35 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
         <div class="form-grid cols3" style="margin-bottom:14px;">
           <div class="form-group">
             <label>Distrito</label>
-            <select id="d-filtDist" onchange="renderPersonList()">
+            <select id="d-filtDist">
               <option value="">Todos os distritos</option>
             </select>
           </div>
           <div class="form-group">
             <label>Tipo / Grupo</label>
-            <select id="d-filtTipo" onchange="renderPersonList()">
+            <select id="d-filtTipo">
               <option value="">Todos</option>
-              <option>Staff</option><option>MTS</option><option>HSH</option><option>Reclusos</option>
             </select>
           </div>
           <div class="form-group">
             <label>Estado</label>
-            <select id="d-filtEstado" onchange="renderPersonList()">
+            <select id="d-filtEstado">
               <option value="activo">Activos</option>
               <option value="">Todos (incl. inactivos)</option>
             </select>
           </div>
           <div class="form-group">
             <label>Pesquisar nome / cargo</label>
-            <input type="text" id="d-search" placeholder="Nome ou cargo…" oninput="renderPersonList()">
+            <input type="text" id="d-search" placeholder="Nome ou cargo…">
           </div>
           <div class="form-group">
             <label>Pesquisar por ID</label>
-            <input type="text" id="d-searchId" placeholder="Ex: 12, 45…" oninput="renderPersonList()">
+            <input type="text" id="d-searchId" placeholder="Ex: 12, 45…">
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" style="font-size:12px;padding:7px 16px;" onclick="carregarLista('d')">🔍 Carregar Colaboradores</button>
+          <span id="d-loadedInfo" style="font-size:12px;color:var(--muted);"></span>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <span style="font-size:12px;color:var(--gray);"><span id="d-selCount" class="counter-badge">0</span> seleccionado(s)</span>
@@ -255,7 +258,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
             <button class="btn btn-gray" style="font-size:12px;padding:5px 12px;" onclick="selectAll('d',false)">✖ Nenhum</button>
           </div>
         </div>
-        <div class="person-list" id="d-personList"><div class="loading">A carregar…</div></div>
+        <div class="person-list" id="d-personList"><div class="loading" style="color:var(--muted);">👆 Defina os filtros e clique em <strong>Carregar Colaboradores</strong></div></div>
       </div>
 
       <!-- Opções -->
@@ -383,20 +386,19 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
         <div class="form-grid cols3" style="margin-bottom:14px;">
           <div class="form-group">
             <label>Distrito</label>
-            <select id="c-filtDist" onchange="renderPersonListCert()">
+            <select id="c-filtDist">
               <option value="">Todos</option>
             </select>
           </div>
           <div class="form-group">
             <label>Tipo / Grupo</label>
-            <select id="c-filtTipo" onchange="renderPersonListCert()">
+            <select id="c-filtTipo">
               <option value="">Todos</option>
-              <option>Staff</option><option>MTS</option><option>HSH</option><option>Reclusos</option>
             </select>
           </div>
           <div class="form-group">
             <label>Estado</label>
-            <select id="c-filtEstado" onchange="renderPersonListCert()">
+            <select id="c-filtEstado">
               <option value="">Todos</option>
               <option value="activo">Activos</option>
               <option value="inactivo">Inactivos / Ex-colaboradores</option>
@@ -404,12 +406,16 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
           </div>
           <div class="form-group">
             <label>Pesquisar nome / cargo</label>
-            <input type="text" id="c-search" placeholder="Nome…" oninput="renderPersonListCert()">
+            <input type="text" id="c-search" placeholder="Nome…">
           </div>
           <div class="form-group">
             <label>Pesquisar por ID</label>
-            <input type="text" id="c-searchId" placeholder="Ex: 12, 45…" oninput="renderPersonListCert()">
+            <input type="text" id="c-searchId" placeholder="Ex: 12, 45…">
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" style="font-size:12px;padding:7px 16px;" onclick="carregarLista('c')">🔍 Carregar Colaboradores</button>
+          <span id="c-loadedInfo" style="font-size:12px;color:var(--muted);"></span>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <span style="font-size:12px;color:var(--gray);"><span id="c-selCount" class="counter-badge">0</span> seleccionado(s)</span>
@@ -418,7 +424,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
             <button class="btn btn-gray" style="font-size:12px;padding:5px 12px;" onclick="selectAll('c',false)">✖ Nenhum</button>
           </div>
         </div>
-        <div class="person-list" id="c-personList"><div class="loading">A carregar…</div></div>
+        <div class="person-list" id="c-personList"><div class="loading" style="color:var(--muted);">👆 Defina os filtros e clique em <strong>Carregar Colaboradores</strong></div></div>
       </div>
 
       <div class="form-section no-print">
@@ -658,20 +664,19 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
         <div class="form-grid cols3" style="margin-bottom:14px;">
           <div class="form-group">
             <label>Distrito</label>
-            <select id="t-filtDist" onchange="renderPersonListTermino()">
+            <select id="t-filtDist">
               <option value="">Todos</option>
             </select>
           </div>
           <div class="form-group">
             <label>Tipo / Grupo</label>
-            <select id="t-filtTipo" onchange="renderPersonListTermino()">
+            <select id="t-filtTipo">
               <option value="">Todos</option>
-              <option>Staff</option><option>MTS</option><option>HSH</option><option>Reclusos</option>
             </select>
           </div>
           <div class="form-group">
             <label>Estado</label>
-            <select id="t-filtEstado" onchange="renderPersonListTermino()">
+            <select id="t-filtEstado">
               <option value="">Todos</option>
               <option value="activo">Activos</option>
               <option value="inactivo">Inactivos / Ex-colaboradores</option>
@@ -679,12 +684,16 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
           </div>
           <div class="form-group">
             <label>Pesquisar nome / cargo</label>
-            <input type="text" id="t-search" placeholder="Nome…" oninput="renderPersonListTermino()">
+            <input type="text" id="t-search" placeholder="Nome…">
           </div>
           <div class="form-group">
             <label>Pesquisar por ID</label>
-            <input type="text" id="t-searchId" placeholder="Ex: 12, 45…" oninput="renderPersonListTermino()">
+            <input type="text" id="t-searchId" placeholder="Ex: 12, 45…">
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" style="font-size:12px;padding:7px 16px;" onclick="carregarLista('t')">🔍 Carregar Colaboradores</button>
+          <span id="t-loadedInfo" style="font-size:12px;color:var(--muted);"></span>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <span style="font-size:12px;color:var(--gray);"><span id="t-selCount" class="counter-badge">0</span> seleccionado(s)</span>
@@ -693,7 +702,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: var
             <button class="btn btn-gray" style="font-size:12px;padding:5px 12px;" onclick="selectAll('t',false)">✖ Nenhum</button>
           </div>
         </div>
-        <div class="person-list" id="t-personList"><div class="loading">A carregar…</div></div>
+        <div class="person-list" id="t-personList"><div class="loading" style="color:var(--muted);">👆 Defina os filtros e clique em <strong>Carregar Colaboradores</strong></div></div>
       </div>
 
       <div class="form-section no-print">
@@ -1007,9 +1016,11 @@ async function loadColabs() {
 
   populateFilters();
   populateSignatarios();
-  renderPersonList();
-  renderPersonListCert();
-  renderPersonListTermino();
+  // Lists are not auto-rendered — user clicks "Carregar" after setting filters
+  ['d-personList','c-personList','t-personList'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="loading" style="color:var(--muted);">👆 Defina os filtros e clique em <strong>Carregar Colaboradores</strong></div>';
+  });
 }
 
 function populateFilters() {
@@ -1072,27 +1083,40 @@ function personRowHtml(c, sel_key, extra) {
   </div>`;
 }
 
+// Loaded sets per tab — only these IDs appear in the list after "Carregar"
+const loadedSets = { d: null, c: null, t: null };
+
+function carregarLista(tab) {
+  const selKey = {d:'sel_d', c:'sel_c', t:'sel_t'}[tab];
+  const filters = {
+    d: { estado:document.getElementById('d-filtEstado').value, distrito:document.getElementById('d-filtDist').value, tipo:document.getElementById('d-filtTipo').value, q:(document.getElementById('d-search').value||'').toLowerCase(), id:document.getElementById('d-searchId').value },
+    c: { distrito:document.getElementById('c-filtDist').value, tipo:document.getElementById('c-filtTipo').value, estado:document.getElementById('c-filtEstado').value, q:(document.getElementById('c-search').value||'').toLowerCase(), id:document.getElementById('c-searchId').value },
+    t: { distrito:document.getElementById('t-filtDist').value, tipo:document.getElementById('t-filtTipo').value, estado:document.getElementById('t-filtEstado').value, q:(document.getElementById('t-search').value||'').toLowerCase(), id:document.getElementById('t-searchId').value },
+  }[tab];
+  const list = filtered(selKey, filters);
+  loadedSets[tab] = list.map(c => c._dbId);
+  const n = list.length;
+  const infoEl = document.getElementById(tab+'-loadedInfo');
+  infoEl.innerHTML = n > 0
+    ? `<span style="color:var(--green);font-weight:600;">✅ ${n} colaborador${n!==1?'es':''} carregado${n!==1?'s':''}</span>`
+    : `<span style="color:var(--red);">⚠️ Nenhum colaborador encontrado com estes filtros</span>`;
+  const renderers = {d:renderPersonList, c:renderPersonListCert, t:renderPersonListTermino};
+  renderers[tab]();
+}
+
 function renderPersonList() {
-  const list = filtered('sel_d', {
-    estado: document.getElementById('d-filtEstado').value,
-    distrito: document.getElementById('d-filtDist').value,
-    tipo: document.getElementById('d-filtTipo').value,
-    q: (document.getElementById('d-search').value||'').toLowerCase(),
-    id: document.getElementById('d-searchId').value
-  });
+  const ids = loadedSets.d;
+  if (ids === null) return; // not yet loaded
+  const list = colaboradores.filter(c => ids.includes(c._dbId));
   const el = document.getElementById('d-personList');
   el.innerHTML = list.length ? list.map(c => personRowHtml(c,'sel_d')).join('') : '<div class="loading">Nenhum encontrado.</div>';
   updateCount('d');
 }
 
 function renderPersonListCert() {
-  const list = filtered('sel_c', {
-    distrito: document.getElementById('c-filtDist').value,
-    tipo: document.getElementById('c-filtTipo').value,
-    estado: document.getElementById('c-filtEstado').value,
-    q: (document.getElementById('c-search').value||'').toLowerCase(),
-    id: document.getElementById('c-searchId').value
-  });
+  const ids = loadedSets.c;
+  if (ids === null) return;
+  const list = colaboradores.filter(c => ids.includes(c._dbId));
   const el = document.getElementById('c-personList');
   el.innerHTML = list.length ? list.map(c => personRowHtml(c,'sel_c',
     (c.estado==='inactivo'?'🔴 Ex ':'')+c.distrito
@@ -1101,13 +1125,9 @@ function renderPersonListCert() {
 }
 
 function renderPersonListTermino() {
-  const list = filtered('sel_t', {
-    distrito: document.getElementById('t-filtDist').value,
-    tipo: document.getElementById('t-filtTipo').value,
-    estado: document.getElementById('t-filtEstado').value,
-    q: (document.getElementById('t-search').value||'').toLowerCase(),
-    id: document.getElementById('t-searchId').value
-  });
+  const ids = loadedSets.t;
+  if (ids === null) return;
+  const list = colaboradores.filter(c => ids.includes(c._dbId));
   const el = document.getElementById('t-personList');
   el.innerHTML = list.length ? list.map(c => {
     const datas = c.inicio_contrato||c.fim_contrato ?
@@ -1135,12 +1155,9 @@ function updateCount(tab) {
 function selectAll(tab, val) {
   const key = {d:'sel_d',c:'sel_c',t:'sel_t'}[tab];
   const renderers = {d:renderPersonList, c:renderPersonListCert, t:renderPersonListTermino};
-  const filters = {
-    d: { estado:document.getElementById('d-filtEstado').value, distrito:document.getElementById('d-filtDist').value, tipo:document.getElementById('d-filtTipo').value, q:(document.getElementById('d-search').value||'').toLowerCase(), id:document.getElementById('d-searchId').value },
-    c: { distrito:document.getElementById('c-filtDist').value, tipo:document.getElementById('c-filtTipo').value, estado:document.getElementById('c-filtEstado').value, q:(document.getElementById('c-search').value||'').toLowerCase(), id:document.getElementById('c-searchId').value },
-    t: { distrito:document.getElementById('t-filtDist').value, tipo:document.getElementById('t-filtTipo').value, estado:document.getElementById('t-filtEstado').value, q:(document.getElementById('t-search').value||'').toLowerCase(), id:document.getElementById('t-searchId').value },
-  };
-  filtered(key, filters[tab]).forEach(c => { c[key] = val; });
+  const ids = loadedSets[tab];
+  if (!ids) return; // nothing loaded yet
+  colaboradores.filter(c => ids.includes(c._dbId)).forEach(c => { c[key] = val; });
   renderers[tab]();
 }
 
