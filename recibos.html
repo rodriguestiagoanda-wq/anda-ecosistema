@@ -428,7 +428,7 @@ async function loadData(){
 
   if(mes>1){
     const allMonths=await nq(
-      'SELECT colab_key,mes,salario_base,dias_efectivos,irps,irps_manual,deps,bruto FROM folha_salario WHERE ano=$1 AND mes<=$2 AND activo=true ORDER BY mes ASC',
+      'SELECT colab_key,codigo,nome,mes,salario_base,dias_efectivos,irps,irps_manual,deps,bruto FROM folha_salario WHERE ano=$1 AND mes<=$2 AND activo=true ORDER BY mes ASC',
       [ano,mes]
     );
     if(allMonths&&allMonths.length){
@@ -440,7 +440,18 @@ async function loadData(){
       });
       // Attach cumulative to each colaborador
       folhaColabs=folhaColabs.map(col=>{
-        const hist=byKey[col.key]||[];
+        // A chave (colab_key) pode mudar entre meses (ex.: add_... em Jan–Mar e gc_..._VIV... depois).
+        // Junta os meses pelo código VIV ou pelo nome; um registo por mês, preferindo a mesma chave.
+        const _nn=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z]/g,'');
+        const _cod=x=>(x.codigo||'')||((String(x.colab_key||x.key||'').match(/VIV\d{9}/)||[])[0]||'');
+        const cCod=_cod(col), cNome=_nn(col.nome);
+        const porMes={};
+        allMonths.forEach(r=>{
+          const mesmo=r.colab_key===col.key||(cCod&&_cod(r)===cCod)||(cNome&&_nn(r.nome)===cNome);
+          if(!mesmo)return;
+          if(!porMes[r.mes]||r.colab_key===col.key)porMes[r.mes]=r;
+        });
+        const hist=Object.values(porMes);
         const cumBruto = hist.reduce((s,r)=>{
           const sb=parseFloat(r.salario_base)||parseFloat(r.bruto)||0;
           const de=parseInt(r.dias_efectivos)||30;
