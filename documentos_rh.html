@@ -842,6 +842,7 @@ async function nq(sql, params) {
       body: JSON.stringify({ sql, params: params || [] })
     });
     const d = await r.json();
+    if (!r.ok || d.error) { console.error('[DOCS] nq SQL:', d.error && d.error.message); return null; }
     return d.rows || [];
   } catch(e) { console.warn('[DOCS] nq:', e.message); return null; }
 }
@@ -982,9 +983,20 @@ async function loadColabs() {
   });
 
   const rows = await nq(
-    `SELECT id, nome, cargo, tipo, distrito, salario_base, activo, estado,
-     inicio_contrato, fim_contrato, bairro_localidade, provincia
-     FROM colaboradores ORDER BY nome ASC`, []
+    `SELECT e.key AS projecto, c->>'id' AS codigo, c->>'nome' AS nome, c->>'categoria' AS cargo, c->>'grupo' AS tipo, c->>'distrito' AS distrito,
+       COALESCE(pv.provincia, c->>'provincia') AS provincia, COALESCE(pv.bairro, c->>'bairro') AS bairro,
+       COALESCE(pv.salario_bruto, pv.salario, NULLIF(c->>'salario','')::numeric) AS salario_base,
+       c->>'data_admissao' AS data_admissao,
+       COALESCE(gc.data_inicio::text, c->>'data_admissao') AS inicio_contrato, gc.data_termino::text AS fim_contrato,
+       (d.colaborador_id IS NULL) AS activo, d.data_desvinculacao::text AS data_desvinculacao, d.motivo AS motivo_desvinculacao
+     FROM rh_estado_modulo m
+     CROSS JOIN LATERAL jsonb_each(m.dados) e
+     CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(e.value)='array' THEN e.value ELSE '[]'::jsonb END) c
+     LEFT JOIN gc_contratos gc ON gc.colaborador_id = c->>'id' AND gc.projecto_codigo = e.key
+     LEFT JOIN gc_provas_vida pv ON pv.colaborador_id = c->>'id' AND pv.projecto_codigo = e.key
+     LEFT JOIN gc_v_desvinculados_activos d ON d.colaborador_id = c->>'id' AND d.projecto_codigo = e.key
+     WHERE m.id = 1
+     ORDER BY nome ASC`, []
   );
 
   if (!rows || rows.length === 0) {
@@ -999,17 +1011,23 @@ async function loadColabs() {
   }
 
   const src = rows;
-  colaboradores = src.map(r => ({
-    _dbId: r.id,
+  colaboradores = src.map((r, i) => ({
+    _dbId: i + 1,
+    codigo: r.codigo || '',
+    projecto: r.projecto || '',
+    bairro: r.bairro || '',
+    data_admissao: r.data_admissao ? String(r.data_admissao).slice(0,10) : '',
+    data_desvinculacao: r.data_desvinculacao ? String(r.data_desvinculacao).slice(0,10) : '',
+    motivo_desvinculacao: r.motivo_desvinculacao || '',
     nome: r.nome,
     cargo: r.cargo || '',
     tipo: r.tipo || 'MTS',
     distrito: r.distrito || '',
     salario_base: parseFloat(r.salario_base) || 0,
     activo: r.activo !== false,
-    estado: r.estado || (r.activo !== false ? 'activo' : 'inactivo'),
-    inicio_contrato: r.inicio_contrato ? r.inicio_contrato.slice(0,10) : '',
-    fim_contrato:    r.fim_contrato    ? r.fim_contrato.slice(0,10)    : '',
+    estado: r.activo !== false ? 'activo' : 'inactivo',
+    inicio_contrato: r.inicio_contrato ? String(r.inicio_contrato).slice(0,10) : '',
+    fim_contrato:    r.fim_contrato    ? String(r.fim_contrato).slice(0,10)    : '',
     provincia: r.provincia || 'Tete',
     sel_d: false, sel_c: false, sel_t: false,
   }));
@@ -1066,7 +1084,7 @@ function filtered(sel_key, filters) {
       if (key==='tipo' && c.tipo !== val) return false;
       if (key==='estado' && c.estado !== val) return false;
       if (key==='q' && val && !c.nome.toLowerCase().includes(val) && !c.cargo.toLowerCase().includes(val)) return false;
-      if (key==='id' && val && !String(c._dbId).includes(val.trim())) return false;
+      if (key==='id' && val && !String(c.codigo || c._dbId).toLowerCase().includes(val.trim().toLowerCase())) return false;
       if (key==='activo_only' && val && c.estado !== 'activo') return false;
     }
     return true;
@@ -1076,7 +1094,7 @@ function filtered(sel_key, filters) {
 function personRowHtml(c, sel_key, extra) {
   return `<div class="person-row">
     <input type="checkbox" ${c[sel_key]?'checked':''} onchange="toggleSel(${c._dbId},'${sel_key}',this.checked)">
-    <span style="color:var(--muted);font-size:10px;min-width:28px;text-align:right;">#${c._dbId}</span>
+    <span style="color:var(--muted);font-size:10px;min-width:28px;text-align:right;">${c.codigo || ('#'+c._dbId)}</span>
     <span class="person-name">${c.nome}</span>
     <span class="person-meta">${c.cargo}</span>
     <span class="person-badge">${extra || c.distrito}</span>
@@ -1335,8 +1353,8 @@ function previewCert() {
 
   selected.forEach(c => {
     // Dates come from DB — show editable fields per card
-    const inicioVal = c.inicio_contrato || '';
-    const fimVal    = c.fim_contrato    || '';
+    const inicioVal = c.data_admissao || c.inicio_contrato || '';
+    const fimVal    = c.data_desvinculacao || c.fim_contrato || '';
     const uid = 'cert_'+c._dbId;
     el.innerHTML += `
       <div class="doc-card" id="card-${uid}">
@@ -1609,10 +1627,11 @@ async function saveLog(tab) {
   renderHist();
   const el = document.getElementById(tab+'-status');
   if (el) { el.textContent = '✅ '+items.length+' doc(s) registado(s).'; setTimeout(()=>el.textContent='',3000); }
-  for (const c of items) {
-    if (!c._dbId) continue;
-    await nq('INSERT INTO historico_documentos (tipo,colaborador_id,emitido_em,emitido_por) VALUES ($1,$2,NOW(),$3) ON CONFLICT DO NOTHING',
-      [tipo, c._dbId, 'admin']);
+  // Registo na base de dados (colunas reais: tipo, colaboradores text[], gerado_por, data_emissao, detalhes)
+  const codigos = items.map(c => c.codigo || c.nome).filter(Boolean);
+  if (codigos.length) {
+    await nq('INSERT INTO historico_documentos (tipo, colaboradores, gerado_por, data_emissao, detalhes) VALUES ($1, $2::text[], $3, NOW(), $4::jsonb)',
+      [tipo, codigos, 'admin', JSON.stringify({ nomes: items.map(c => c.nome) })]);
   }
 }
 

@@ -2462,6 +2462,7 @@
                  JOIN rh_colaboradores c ON c.id = f.colaborador_id
                  JOIN rh_projectos p ON p.id = c.projecto_id
                  WHERE p.codigo = $1 AND COALESCE(f.activo, TRUE) = TRUE
+                   AND EXTRACT(YEAR FROM f.data_referencia) = EXTRACT(YEAR FROM CURRENT_DATE)
                  GROUP BY c.id_interno, EXTRACT(MONTH FROM f.data_referencia)`,
                 [codigoProjecto]
             );
@@ -4130,7 +4131,8 @@
                 motivoFim: String(a?.motivoFim || a?.motivo_fim || ''),
                 observacao: String(a?.observacao || ''),
                 preservarAntiguidade: i === 0 ? true : a?.preservarAntiguidade !== false
-            })).filter(a => a.inicio);
+            })).filter(a => a.inicio)
+                .filter((a, i, arr) => arr.findIndex(b => b.inicio === a.inicio && String(b.fim || '') === String(a.fim || '')) === i);
 
             if (!alocacoes.length && colab.data_admissao) {
                 alocacoes = [{
@@ -4780,8 +4782,40 @@
 
         const obterProjectoActivo = () => document.getElementById('projectoFiltroGlobal')?.value || 'VIVA+';
 
-        const obterFeriadosDoAno = (projecto = obterProjectoActivo(), ano = new Date().getFullYear()) =>
-            obterConfigDatasGlobaisProjecto(projecto).feriados.filter(f => f.data && new Date(`${f.data}T12:00:00`).getFullYear() === Number(ano));
+        // Feriados nacionais de Moçambique — aplicados automaticamente a todos os projectos e anos.
+        // Quando o feriado cai num domingo, a segunda-feira seguinte também é considerada feriado.
+        const FERIADOS_NACIONAIS_MZ = [
+            ['01-01', 'Dia da Fraternidade Universal'],
+            ['02-03', 'Dia dos Heróis Moçambicanos'],
+            ['04-07', 'Dia da Mulher Moçambicana'],
+            ['05-01', 'Dia Internacional dos Trabalhadores'],
+            ['06-25', 'Dia da Independência Nacional'],
+            ['09-07', 'Dia da Vitória'],
+            ['09-25', 'Dia das Forças Armadas de Libertação Nacional'],
+            ['10-04', 'Dia da Paz e Reconciliação'],
+            ['12-25', 'Dia da Família']
+        ];
+        const isoLocalFeriado = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const obterFeriadosNacionaisDoAno = (ano) => {
+            const lista = [];
+            FERIADOS_NACIONAIS_MZ.forEach(([md, nome]) => {
+                const d = new Date(`${Number(ano)}-${md}T12:00:00`);
+                if (Number.isNaN(d.getTime())) return;
+                lista.push({ id: `NAC-${ano}-${md}`, data: isoLocalFeriado(d), nome, ambito: 'nacional', automatico: true });
+                if (d.getDay() === 0) {
+                    const seg = new Date(d); seg.setDate(seg.getDate() + 1);
+                    lista.push({ id: `NAC-${ano}-${md}-seg`, data: isoLocalFeriado(seg), nome: `${nome} (transferido)`, ambito: 'nacional', automatico: true });
+                }
+            });
+            return lista;
+        };
+
+        const obterFeriadosDoAno = (projecto = obterProjectoActivo(), ano = new Date().getFullYear()) => {
+            const registados = obterConfigDatasGlobaisProjecto(projecto).feriados.filter(f => f.data && new Date(`${f.data}T12:00:00`).getFullYear() === Number(ano));
+            const datasRegistadas = new Set(registados.filter(f => { const a = String(f.ambito || 'projecto').toLowerCase(); return a !== 'distrito' && a !== 'local'; }).map(f => f.data));
+            const nacionais = obterFeriadosNacionaisDoAno(ano).filter(f => !datasRegistadas.has(f.data));
+            return [...registados, ...nacionais];
+        };
 
         const obterSetFeriadosDoAno = (projecto = obterProjectoActivo(), ano = new Date().getFullYear()) =>
             new Set(obterFeriadosDoAno(projecto, ano).map(f => f.data));
@@ -5144,19 +5178,35 @@
 
         const processarDireitosLaborais = (colab, ano = obterAnoActual(), referencia = new Date()) => {
             let totalFaltasInjustificadas = Number(colab.faltasHistoricas) || 0;
-            Object.values(colab.faltasMensais || {}).forEach(valor => {
-                totalFaltasInjustificadas += Number(valor) || 0;
-            });
-            Object.values(colab.faltasEfectividadeMensais || {}).forEach(valor => {
-                totalFaltasInjustificadas += Number(valor) || 0;
-            });
+            // Faltas de meses anteriores à admissão (no ano da admissão) não são contadas.
+            const mesMinimoFaltas = (() => {
+                const adm = colab.data_admissao ? new Date(`${String(colab.data_admissao).slice(0, 10)}T12:00:00`) : null;
+                if (!adm || Number.isNaN(adm.getTime())) return 0;
+                if (adm.getFullYear() > Number(ano)) return 12;
+                if (adm.getFullYear() < Number(ano)) return 0;
+                return adm.getMonth();
+            })();
+            const somarFaltasMensais = (fonte) => {
+                Object.entries(fonte || {}).forEach(([mes, valor]) => {
+                    const idxMes = mesesLista.indexOf(mes);
+                    if (idxMes >= 0 && idxMes < mesMinimoFaltas) return;
+                    totalFaltasInjustificadas += Number(valor) || 0;
+                });
+            };
+            somarFaltasMensais(colab.faltasMensais);
+            somarFaltasMensais(colab.faltasEfectividadeMensais);
 
             const direitoFerias = obterDireitoFeriasAnual(colab, ano);
             const feriasAGozar = obterFeriasAGozarAteData(colab, ano, referencia);
             const feriasPlanificadas = obterDiasFeriasPlanificadas(colab, ano);
             const feriasGozadas = obterDiasFeriasGozadas(colab, ano);
             const feriasColectivas = obterDiasFeriasColectivas(colab, ano, obterProjectoActivo());
-            const saldo = direitoFerias === null ? null : direitoFerias - feriasGozadas - totalFaltasInjustificadas - feriasColectivas;
+            // As férias colectivas só consomem o saldo disponível; o excedente fica registado à parte
+            // (colectivasSemCobertura) em vez de gerar saldo negativo.
+            const saldoAntesColectivas = direitoFerias === null ? null : direitoFerias - feriasGozadas - totalFaltasInjustificadas;
+            const feriasColectivasDescontadas = saldoAntesColectivas === null ? 0 : Math.min(feriasColectivas, Math.max(saldoAntesColectivas, 0));
+            const colectivasSemCobertura = saldoAntesColectivas === null ? 0 : Math.round((feriasColectivas - feriasColectivasDescontadas) * 100) / 100;
+            const saldo = saldoAntesColectivas === null ? null : Math.round((saldoAntesColectivas - feriasColectivasDescontadas) * 100) / 100;
 
             return {
                 direitoFerias,
@@ -5164,6 +5214,8 @@
                 feriasPlanificadas,
                 feriasGozadas,
                 feriasColectivas,
+                feriasColectivasDescontadas,
+                colectivasSemCobertura,
                 saldo,
                 totalFaltasInjustificadas,
                 // aliases mantidos para compatibilidade com outras partes do módulo
@@ -5254,7 +5306,8 @@
                     alert('Não foi possível calcular o direito de férias. Verifique a data de admissão.');
                     return;
                 }
-                if (planificadasExistentes + diasPedidoNoAno + feriasColectivasAno > direito) {
+                const faltasNJAno = Number(processarDireitosLaborais(colab, anoPedido).totalFaltasInjustificadas) || 0;
+                if (planificadasExistentes + diasPedidoNoAno + feriasColectivasAno + faltasNJAno > direito) {
                     alert(`A aprovação ultrapassaria o Direito de Férias projectado até Dezembro. Direito: ${formatarDias(direito)} dias; férias colectivas: ${formatarDias(feriasColectivasAno)} dias; já planificadas: ${formatarDias(planificadasExistentes)} dias; pedido: ${formatarDias(diasPedidoNoAno)} dias.`);
                     return;
                 }
@@ -5671,7 +5724,7 @@
                         <td class="p-3 text-center min-w-[120px] ${calculo.saldo !== null && calculo.saldo < 0 ? 'bg-red-50' : 'bg-gray-50'}">
                             ${calculo.saldo === null
                                 ? '<span class="text-[10px] font-bold text-gray-400">Aguarda admissão</span>'
-                                : `<div class="text-2xl font-black ${calculo.saldo < 0 ? 'text-red-700' : 'text-green-800'}">${formatarDias(calculo.saldo)} d</div><div class="text-[9px] text-gray-500">Direito − gozadas − faltas NJ − colectivas</div>`}
+                                : `<div class="text-2xl font-black ${calculo.saldo < 0 ? 'text-red-700' : 'text-green-800'}">${formatarDias(calculo.saldo)} d</div><div class="text-[9px] text-gray-500">Direito − gozadas − faltas NJ − colectivas</div>${calculo.colectivasSemCobertura > 0 ? `<div class="text-[9px] font-bold text-amber-700">⚠ ${formatarDias(calculo.colectivasSemCobertura)} d de férias colectivas sem saldo</div>` : ''}`}
                         </td>
                         <td class="p-3 text-center no-print">
                             <div class="flex flex-wrap justify-center gap-1 min-w-[150px]">
