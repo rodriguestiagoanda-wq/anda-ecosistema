@@ -5132,10 +5132,15 @@
             return dias.size;
         };
 
+        // Férias acumuladas do ano anterior (campo do contrato de cada colaborador), somadas só ao ano corrente.
+        const obterFeriasAnoAnterior = (colab, ano = obterAnoActual()) =>
+            Number(ano) === new Date().getFullYear() ? (Number(colab?.saldoFeriasAcumulado) || 0) : 0;
+
         const obterDireitoFeriasAnual = (colab, ano = obterAnoActual()) => {
             normalizarAlocacoesColaborador(colab);
             if (!(colab.alocacoes || []).length) return null;
-            return calcularFeriasProporcionais(colab, Number(ano), new Date(Number(ano), 11, 31, 12));
+            const base = calcularFeriasProporcionais(colab, Number(ano), new Date(Number(ano), 11, 31, 12));
+            return base === null ? null : base + obterFeriasAnoAnterior(colab, ano);
         };
 
         const obterFeriasAGozarAteData = (colab, ano = obterAnoActual(), referencia = new Date()) => {
@@ -5145,7 +5150,8 @@
             const hoje = rhConverterData(referencia) || new Date();
             if (anoRef > hoje.getFullYear()) return 0;
             const limite = anoRef < hoje.getFullYear() ? new Date(anoRef, 11, 31, 12) : hoje;
-            return calcularFeriasProporcionais(colab, anoRef, limite);
+            const base = calcularFeriasProporcionais(colab, anoRef, limite);
+            return base === null ? null : base + obterFeriasAnoAnterior(colab, anoRef);
         };
 
         const obterDiasFeriasPlanificadas = (colab, ano = obterAnoActual(), pedidoIgnoradoId = null) => {
@@ -5222,7 +5228,8 @@
                 totalDireitos: direitoFerias,
                 direitoAnoAtual: direitoFerias,
                 diasAGozar: feriasAGozar,
-                saldoDisponivelPlano: saldo
+                saldoDisponivelPlano: saldo,
+                feriasAnoAnterior: obterFeriasAnoAnterior(colab, ano)
             };
         };
 
@@ -5701,7 +5708,7 @@
                         <td class="p-3 text-center min-w-[115px]">
                             ${calculo.direitoFerias === null
                                 ? '<span class="text-[10px] font-bold text-gray-400">Aguarda admissão</span>'
-                                : `<div class="text-xl font-black text-blue-900">${formatarDias(calculo.direitoFerias)} d</div><div class="text-[9px] text-gray-400">Projectado até Dez.</div>`}
+                                : `<div class="text-xl font-black text-blue-900">${formatarDias(calculo.direitoFerias)} d</div><div class="text-[9px] text-gray-400">${calculo.feriasAnoAnterior ? `Inclui ${formatarDias(calculo.feriasAnoAnterior)} d do ano ant.` : 'Projectado até Dez.'}</div>`}
                         </td>
                         <td class="p-3 text-center min-w-[115px] bg-blue-50/40">
                             ${calculo.feriasAGozar === null
