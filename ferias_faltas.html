@@ -841,6 +841,20 @@
                     🧾 Imprimir Extrato
                 </button>
             </div>
+            <div class="no-print mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                <div>
+                    <h3 class="text-sm font-black uppercase text-orange-950">Fecho Anual de Férias</h3>
+                    <p class="mt-1 text-[11px] text-orange-800">Fecho Anual = Direito até Dez. − Faltas NJ − Gozadas − Colectivas − Planificadas. Meta: 0 (todo o saldo planificado). Respeita os filtros de distrito, categoria e grupo.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <select id="selFechoAnualSituacao" class="rounded border border-orange-300 bg-white px-2 py-2 text-xs font-bold text-orange-900">
+                        <option value="todos">Todos</option>
+                        <option value="por_planificar">Só por planificar</option>
+                    </select>
+                    <button id="btnImprimirFechoAnual" type="button" class="rounded bg-orange-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-orange-800">🖨️ Imprimir Fecho Anual</button>
+                    <button id="btnExportarFechoAnual" type="button" class="rounded bg-green-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-green-800">📊 Exportar Excel</button>
+                </div>
+            </div>
             <div class="text-center mb-4 hidden print:block">
                 <h2 class="text-lg font-black uppercase text-gray-900">ANDA - MAPA DE FÉRIAS DO PROJECTO <span id="printNomeProjecto"></span></h2>
                 <p class="text-xs text-gray-600">Documento de Planeamento de Recursos Humanos</p>
@@ -6174,6 +6188,208 @@
             janela.focus();
             setTimeout(() => janela.print(), 350);
         };
+
+        // ===== Fecho Anual de Férias =====
+        // Fecho Anual = Direito até Dez. − Faltas NJ − Gozadas − Colectivas (descontadas) − Planificadas (por gozar)
+        const obterDadosFechoAnual = () => {
+            const { projecto, filtros, colaboradores } = obterColaboradoresFiltradosParaExtrato();
+            const situacaoFiltro = document.getElementById('selFechoAnualSituacao')?.value || 'todos';
+            const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+            let linhas = colaboradores.map(colab => {
+                const calc = processarDireitosLaborais(colab);
+                if (calc.direitoFerias === null) return null;
+                const fecho = r2((calc.saldo || 0) - (calc.feriasPlanificadas || 0));
+                return {
+                    id: colab.id || '', nome: colab.nome || '', categoria: colab.categoria || '',
+                    distrito: colab.distrito || 'Sem distrito', grupo: colab.grupo || '',
+                    direito: r2(calc.direitoFerias), faltas: r2(calc.totalFaltasInjustificadas),
+                    gozadas: r2(calc.feriasGozadas), colectivas: r2(calc.feriasColectivasDescontadas),
+                    planificadas: r2(calc.feriasPlanificadas), fecho,
+                    situacao: fecho > 0 ? 'Por planificar' : (fecho < 0 ? 'Excedido' : 'OK')
+                };
+            }).filter(Boolean);
+            if (situacaoFiltro === 'por_planificar') linhas = linhas.filter(l => l.fecho > 0);
+            const distritos = {};
+            linhas.forEach(l => {
+                const d = distritos[l.distrito] || (distritos[l.distrito] = { distrito: l.distrito, total: 0, porPlanificar: 0, diasEmFalta: 0 });
+                d.total += 1;
+                if (l.fecho > 0) { d.porPlanificar += 1; d.diasEmFalta = r2(d.diasEmFalta + l.fecho); }
+            });
+            const resumo = Object.values(distritos).sort((a, b) => a.distrito.localeCompare(b.distrito, 'pt'));
+            return { projecto, filtros, situacaoFiltro, linhas, resumo };
+        };
+
+        const imprimirFechoAnualFerias = async () => {
+            const { projecto, filtros, situacaoFiltro, linhas, resumo } = obterDadosFechoAnual();
+            if (!linhas.length) { alert('Não existem colaboradores para o Fecho Anual com os filtros actuais.'); return; }
+            const esc = escaparHTMLAuditoria;
+            const d = (v) => `${formatarDias(v)} d`;
+            const descricaoFiltros = descreverFiltrosExtrato(filtros) + (situacaoFiltro === 'por_planificar' ? ' | Só por planificar' : '');
+            const utilizador = obterUtilizadorEcossistema() || {};
+            const dataEmissao = new Date().toLocaleString('pt-MZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const soma = (arr, k) => Math.round(arr.reduce((s, l) => s + (Number(l[k]) || 0), 0) * 100) / 100;
+            const colunasNum = ['direito', 'faltas', 'gozadas', 'colectivas', 'planificadas', 'fecho'];
+            let corpo = '';
+            let n = 0;
+            resumo.forEach(grupo => {
+                const doDistrito = linhas.filter(l => l.distrito === grupo.distrito);
+                corpo += `<tr class="distrito"><td colspan="12">${esc(grupo.distrito)} — ${doDistrito.length} colaborador(es), ${grupo.porPlanificar} por planificar</td></tr>`;
+                doDistrito.forEach(l => {
+                    n += 1;
+                    const cls = l.fecho > 0 ? 'falta' : (l.fecho < 0 ? 'excedido' : 'ok');
+                    corpo += `<tr>
+                        <td class="centro">${n}</td><td class="id">${esc(l.id)}</td><td class="nome">${esc(l.nome)}</td>
+                        <td>${esc(l.categoria)}</td><td>${esc(l.grupo)}</td>
+                        ${colunasNum.map(k => `<td class="numero ${k === 'fecho' ? cls : ''}">${d(l[k])}</td>`).join('')}
+                        <td class="centro ${cls}">${esc(l.situacao)}</td>
+                    </tr>`;
+                });
+                corpo += `<tr class="subtotal"><td colspan="5" style="text-align:right">Subtotal ${esc(grupo.distrito)}</td>${colunasNum.map(k => `<td class="numero">${d(soma(doDistrito, k))}</td>`).join('')}<td></td></tr>`;
+            });
+            const linhasResumo = resumo.map(g => `<tr><td>${esc(g.distrito)}</td><td class="centro">${g.total}</td><td class="centro">${g.porPlanificar}</td><td class="centro">${d(g.diasEmFalta)}</td></tr>`).join('');
+            const totalPorPlanificar = resumo.reduce((s, g) => s + g.porPlanificar, 0);
+            const janela = window.open('', '_blank', 'width=1400,height=900');
+            if (!janela) { alert('O navegador bloqueou a janela de impressão. Autorize pop-ups para este site e tente novamente.'); return; }
+            const html = `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><title>Fecho Anual de Férias - ${esc(projecto)}</title>
+<style>
+    @page { size: A4 landscape; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #172033; margin: 0; font-size: 9px; }
+    .cabecalho { border-bottom: 3px solid #9a3412; padding-bottom: 8px; margin-bottom: 10px; }
+    h1 { margin: 0; text-align: center; font-size: 16px; text-transform: uppercase; color: #7c2d12; }
+    h2 { font-size: 11px; color: #7c2d12; margin: 14px 0 4px; text-transform: uppercase; }
+    .subtitulo { text-align: center; margin-top: 3px; font-size: 10px; color: #4b5563; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-top: 9px; }
+    .meta div { border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px 7px; background: #f8fafc; }
+    .filtros { margin-top: 6px; border: 1px solid #fdba74; border-radius: 4px; padding: 6px 8px; background: #fff7ed; color: #7c2d12; font-size: 8.5px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+    th { background: #9a3412; color: white; border: 1px solid #7c2d12; padding: 5px 3px; font-size: 7.4px; text-transform: uppercase; text-align: center; }
+    td { border: 1px solid #cbd5e1; padding: 3px; vertical-align: middle; }
+    .centro, .numero { text-align: center; white-space: nowrap; }
+    .id { font-family: monospace; font-size: 7.5px; }
+    .nome { font-weight: bold; text-transform: uppercase; }
+    tr.distrito td { background: #ffedd5; font-weight: bold; color: #7c2d12; text-transform: uppercase; }
+    tr.subtotal td { background: #f1f5f9; font-weight: bold; }
+    .falta { color: #b91c1c; font-weight: bold; background: #fef2f2; }
+    .ok { color: #166534; font-weight: bold; background: #f0fdf4; }
+    .excedido { color: #92400e; font-weight: bold; background: #fffbeb; }
+    .resumo { width: 50%; }
+    .nota { margin-top: 7px; color: #475569; font-size: 8px; }
+    .assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 28px; }
+    .assinatura { text-align: center; padding-top: 20px; border-top: 1px solid #334155; }
+    .assinatura strong { display: block; font-size: 9px; }
+    .assinatura span { font-size: 8px; color: #64748b; }
+</style></head><body>
+    <div class="cabecalho">
+        <h1>ANDA — Fecho Anual de Férias ${obterAnoActual()}</h1>
+        <div class="subtitulo">Fecho Anual = Direito até Dez. − Faltas NJ − Gozadas − Colectivas − Planificadas (meta: 0)</div>
+        <div class="meta">
+            <div><strong>Projecto:</strong> ${esc(projecto)}</div>
+            <div><strong>Colaboradores:</strong> ${linhas.length}</div>
+            <div><strong>Por planificar:</strong> ${totalPorPlanificar}</div>
+            <div><strong>Emitido em:</strong> ${esc(dataEmissao)}</div>
+        </div>
+        <div class="filtros"><strong>Filtros aplicados:</strong> ${esc(descricaoFiltros)}</div>
+    </div>
+    <table>
+        <thead><tr>
+            <th style="width:3%">N.º</th><th style="width:9%">ID interno</th><th style="width:18%">Nome do trabalhador</th>
+            <th style="width:13%">Categoria</th><th style="width:7%">Grupo</th>
+            <th>Direito até Dez.</th><th>Faltas NJ</th><th>Gozadas</th><th>Colectivas</th><th>Planificadas</th><th>Fecho Anual</th><th>Situação</th>
+        </tr></thead>
+        <tbody>${corpo}</tbody>
+        <tfoot><tr class="subtotal"><td colspan="5" style="text-align:right">TOTAL GERAL</td>${colunasNum.map(k => `<td class="numero">${d(soma(linhas, k))}</td>`).join('')}<td></td></tr></tfoot>
+    </table>
+    <h2>Resumo por distrito</h2>
+    <table class="resumo">
+        <thead><tr><th>Distrito</th><th>Colaboradores</th><th>Por planificar</th><th>Dias em falta</th></tr></thead>
+        <tbody>${linhasResumo}</tbody>
+    </table>
+    <div class="nota">Valores calculados na data da emissão. "Por planificar" = Fecho Anual maior que 0; "Excedido" = Fecho Anual menor que 0.</div>
+    <div class="assinaturas">
+        <div class="assinatura"><strong>${esc(utilizador.nome || utilizador.username || 'Utilizador autenticado')}</strong><span>${esc(utilizador.funcao || utilizador.role || 'Elaborado por')}</span></div>
+        <div class="assinatura"><strong>________________________________</strong><span>Visto / Aprovado por</span></div>
+    </div>
+</body></html>`;
+            janela.document.open();
+            janela.document.write(html);
+            janela.document.close();
+            try {
+                await registarAuditoriaDirecta({
+                    accao: 'IMPRIMIR_FECHO_ANUAL_FERIAS', entidade: 'fecho_anual_ferias', entidadeId: projecto,
+                    descricao: `Fecho Anual de férias do projecto ${projecto} (${linhas.length} colaboradores, ${totalPorPlanificar} por planificar) enviado para impressão. Filtros: ${descricaoFiltros}.`,
+                    valorNovo: { projecto, total: linhas.length, por_planificar: totalPorPlanificar, filtros, emitido_em: new Date().toISOString() }
+                });
+            } catch (e) { console.warn('Auditoria Fecho Anual:', e); }
+            janela.focus();
+            setTimeout(() => janela.print(), 350);
+        };
+
+        const carregarSheetJS = () => new Promise((resolve, reject) => {
+            if (window.XLSX) return resolve(window.XLSX);
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+            s.onload = () => resolve(window.XLSX);
+            s.onerror = () => reject(new Error('Não foi possível carregar a biblioteca Excel.'));
+            document.head.appendChild(s);
+        });
+
+        const exportarFechoAnualExcel = async () => {
+            const { projecto, filtros, situacaoFiltro, linhas, resumo } = obterDadosFechoAnual();
+            if (!linhas.length) { alert('Não existem colaboradores para o Fecho Anual com os filtros actuais.'); return; }
+            let XLSX;
+            try { XLSX = await carregarSheetJS(); } catch (e) { alert(e.message); return; }
+            const ano = obterAnoActual();
+            const cab = ['ID Interno', 'Distrito', 'Nome do Trabalhador', 'Categoria', 'Grupo Target', 'Direito até Dez.', 'Faltas NJ', 'Gozadas', 'Colectivas', 'Planificadas', 'Fecho Anual', 'Situação'];
+            const ordenadas = [...linhas].sort((a, b) => a.distrito.localeCompare(b.distrito, 'pt') || a.nome.localeCompare(b.nome, 'pt'));
+            const aoa = [
+                [`Fecho Anual de Férias ${ano} — Projecto ${projecto}`],
+                [`Fecho Anual = Direito até Dez. − Faltas NJ − Gozadas − Colectivas − Planificadas (meta: 0). Filtros: ${descreverFiltrosExtrato(filtros)}${situacaoFiltro === 'por_planificar' ? ' | Só por planificar' : ''}. Emitido em ${new Date().toLocaleString('pt-MZ')}.`],
+                [],
+                cab
+            ];
+            const primeira = aoa.length + 1;
+            ordenadas.forEach(l => aoa.push([l.id, l.distrito, l.nome, l.categoria, l.grupo, l.direito, l.faltas, l.gozadas, l.colectivas, l.planificadas, l.fecho, l.situacao]));
+            const ultima = aoa.length;
+            aoa.push(['', '', 'TOTAL']);
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            for (let r = primeira; r <= ultima; r++) {
+                ws[`K${r}`] = { t: 'n', v: ordenadas[r - primeira].fecho, f: `ROUND(F${r}-G${r}-H${r}-I${r}-J${r},2)` };
+                ws[`L${r}`] = { t: 's', v: ordenadas[r - primeira].situacao, f: `IF(K${r}>0,"Por planificar",IF(K${r}<0,"Excedido","OK"))` };
+            }
+            const t = ultima + 1;
+            ['F', 'G', 'H', 'I', 'J', 'K'].forEach(c => {
+                const v = ordenadas.reduce((s, l, i) => s + (Number(aoa[primeira - 1 + i][c.charCodeAt(0) - 65]) || 0), 0);
+                ws[`${c}${t}`] = { t: 'n', v: Math.round(v * 100) / 100, f: `SUBTOTAL(9,${c}${primeira}:${c}${ultima})` };
+            });
+            ws['!autofilter'] = { ref: `A${primeira - 1}:L${ultima}` };
+            ws['!cols'] = [13, 14, 36, 28, 12, 13, 9, 9, 10, 11, 11, 14].map(wch => ({ wch }));
+            ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } }];
+
+            const aoaR = [['Distrito', 'Colaboradores', 'Por planificar', 'Dias em falta (Fecho Anual > 0)']];
+            resumo.forEach(g => aoaR.push([g.distrito, g.total, g.porPlanificar, g.diasEmFalta]));
+            aoaR.push(['TOTAL', resumo.reduce((s, g) => s + g.total, 0), resumo.reduce((s, g) => s + g.porPlanificar, 0), Math.round(resumo.reduce((s, g) => s + g.diasEmFalta, 0) * 100) / 100]);
+            const wsR = XLSX.utils.aoa_to_sheet(aoaR);
+            wsR['!cols'] = [18, 14, 14, 26].map(wch => ({ wch }));
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Fecho Anual');
+            XLSX.utils.book_append_sheet(wb, wsR, 'Resumo por Distrito');
+            const nomeFicheiro = `Fecho_Anual_Ferias_${String(projecto).replace(/[^\w-]+/g, '_')}_${ano}.xlsx`;
+            XLSX.writeFile(wb, nomeFicheiro);
+            try {
+                await registarAuditoriaDirecta({
+                    accao: 'EXPORTAR_FECHO_ANUAL_FERIAS', entidade: 'fecho_anual_ferias', entidadeId: projecto,
+                    descricao: `Fecho Anual de férias do projecto ${projecto} exportado para Excel (${linhas.length} colaboradores).`,
+                    valorNovo: { projecto, total: linhas.length, filtros, exportado_em: new Date().toISOString() }
+                });
+            } catch (e) { console.warn('Auditoria Fecho Anual:', e); }
+        };
+
+        document.getElementById('btnImprimirFechoAnual')?.addEventListener('click', imprimirFechoAnualFerias);
+        document.getElementById('btnExportarFechoAnual')?.addEventListener('click', exportarFechoAnualExcel);
 
         document.getElementById('btnImprimirExtratoFerias')?.addEventListener('click', imprimirExtratoGeralFerias);
 
