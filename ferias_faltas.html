@@ -5168,6 +5168,27 @@
             return total;
         };
 
+        // Planificadas pendentes: dias aprovados que ainda não foram confirmados como gozados.
+        // (A validação de pedidos continua a usar obterDiasFeriasPlanificadas, que conta o total aprovado.)
+        const obterDiasFeriasPorGozar = (colab, ano = obterAnoActual()) => {
+            const projecto = obterProjectoActivo();
+            let total = 0;
+            (colab.pedidosFerias || []).forEach(pedido => {
+                if (pedido.estado !== 'aprovado') return;
+                const dias = calcularDiasUteisNoAno(pedido.inicio, pedido.fim, ano, projecto, colab);
+                if (!dias) return;
+                const anoPedido = pedido.inicio ? new Date(`${pedido.inicio}T12:00:00`).getFullYear() : Number(ano);
+                const gozados = anoPedido === Number(ano) ? (Number(pedido.diasGozadosConfirmados) || 0) : 0;
+                total += Math.max(dias - gozados, 0);
+            });
+            const gozadasLegado = colab.feriasMapeadasGozadas || {};
+            Object.entries(colab.feriasMapeadas || {}).forEach(([mes, texto]) => {
+                const dias = calcularDiasTextoLegado(mes, texto, ano, projecto, colab);
+                total += Math.max(dias - (Number(gozadasLegado[mes]) || 0), 0);
+            });
+            return total;
+        };
+
         const obterDiasFeriasGozadas = (colab, ano = obterAnoActual()) => {
             let total = 0;
             (colab.pedidosFerias || []).forEach(pedido => {
@@ -5204,7 +5225,7 @@
 
             const direitoFerias = obterDireitoFeriasAnual(colab, ano);
             const feriasAGozar = obterFeriasAGozarAteData(colab, ano, referencia);
-            const feriasPlanificadas = obterDiasFeriasPlanificadas(colab, ano);
+            const feriasPlanificadas = obterDiasFeriasPorGozar(colab, ano);
             const feriasGozadas = obterDiasFeriasGozadas(colab, ano);
             const feriasColectivas = obterDiasFeriasColectivas(colab, ano, obterProjectoActivo());
             // As férias colectivas só consomem o saldo disponível; o excedente fica registado à parte
