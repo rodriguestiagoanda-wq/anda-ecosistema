@@ -1667,7 +1667,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════
-     ANDA · Folha Timbrada — só PDF A4, página inteira, texto por cima (v2)
+     ANDA · Folha Timbrada — só PDF A4, página inteira, texto por cima (v3)
      Colar este bloco em documentos_rh.html, imediatamente antes de </body>.
      Não altera o código existente: substitui setLetterhead / removeLetterhead.
      ═══════════════════════════════════════════════════════════════════ -->
@@ -1702,9 +1702,13 @@ document.addEventListener('DOMContentLoaded', function() {
   @page lhport{size:A4 portrait;margin:0}
   @page lhland{size:A4 landscape;margin:0}
   @media print{
-    .doc-card.lh-full{width:210mm !important;height:296.5mm !important;page:lhport}
-    .doc-card.lh-full.lh-land{width:297mm !important;height:209.5mm !important;page:lhland}
-    .doc-card.lh-full:last-child{break-after:auto}
+    html,body{margin:0 !important;padding:0 !important;height:auto !important}
+    .preview-container{display:block !important;gap:0 !important;padding:0 !important;margin:0 !important}
+    /* quebra ANTES de cada documento (excepto o 1.º) — evita página em branco no fim */
+    .doc-card{break-after:auto !important;page-break-after:auto !important;break-inside:avoid;margin:0 !important}
+    .doc-card + .doc-card{break-before:page !important;page-break-before:always !important}
+    .doc-card.lh-full{width:210mm !important;height:296mm !important;page:lhport}
+    .doc-card.lh-full.lh-land{width:297mm !important;height:209mm !important;page:lhland}
   }
 </style>
 
