@@ -1666,5 +1666,223 @@ document.addEventListener('DOMContentLoaded', function() {
   loadColabs();
 });
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════
+     ANDA · Folha Timbrada — só PDF A4, página inteira, texto por cima (v2)
+     Colar este bloco em documentos_rh.html, imediatamente antes de </body>.
+     Não altera o código existente: substitui setLetterhead / removeLetterhead.
+     ═══════════════════════════════════════════════════════════════════ -->
+<style id="lhx-style">
+  .lhx-opts{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:10px;font-size:12px}
+  .lhx-opts label{display:flex;flex-direction:column;gap:3px;font-weight:600;color:#555}
+  .lhx-opts input{padding:5px 7px;border:1px solid #ccc;border-radius:6px;font-size:12px;width:70px}
+  .lhx-orient{font-size:12px;font-weight:600;color:#1a6b3c;padding:6px 0}
+  .lhx-hint{font-size:11px;color:#888;margin-top:6px;width:100%}
+  .lhx-msg{font-size:12px;margin-top:6px}
+  .lhx-msg.err{color:#c62828}.lhx-msg.warn{color:#c77700}
+
+  .preview-container{overflow-x:auto}
+
+  /* Folha timbrada PDF A4 como fundo da página inteira, texto por cima */
+  .doc-card.lh-full{
+    box-sizing:border-box;width:210mm;height:297mm;min-height:0;overflow:hidden;
+    padding:var(--lh-mt,45mm) var(--lh-ml,20mm) var(--lh-mb,30mm) !important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .doc-card.lh-full.lh-land{width:297mm;height:210mm}
+  .doc-card.lh-full .doc-letterhead{
+    position:absolute;inset:0;width:100%;height:100%;margin:0;
+    border:none;min-height:0;display:block;z-index:0;
+  }
+  .doc-card.lh-full .doc-letterhead img{
+    width:100%;height:100%;max-width:none;max-height:none;object-fit:fill;
+  }
+  .doc-card.lh-full .doc-lh-actions{position:absolute;top:6px;right:6px;z-index:5}
+  .doc-card.lh-full > :not(.doc-letterhead){position:relative;z-index:1}
+
+  @page lhport{size:A4 portrait;margin:0}
+  @page lhland{size:A4 landscape;margin:0}
+  @media print{
+    .doc-card.lh-full{width:210mm !important;height:296.5mm !important;page:lhport}
+    .doc-card.lh-full.lh-land{width:297mm !important;height:209.5mm !important;page:lhland}
+    .doc-card.lh-full:last-child{break-after:auto}
+  }
+</style>
+
+<script id="lhx-script">
+(function(){
+  'use strict';
+  var TABS = ['decl','cert','oferta','termino'];
+  var DOCS = {decl:'d-docs', cert:'c-docs', oferta:'o-docs', termino:'t-docs'};
+  var DEF  = {
+    decl:   {mt:45, mb:30, ml:20},
+    cert:   {mt:40, mb:25, ml:25},
+    oferta: {mt:45, mb:30, ml:20},
+    termino:{mt:45, mb:30, ml:20}
+  };
+  var cfg = JSON.parse(JSON.stringify(DEF));   /* + land:true/false vindo do PDF */
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  var A4 = [595.28, 841.89];                     /* pontos PDF */
+
+  /* ---------- IndexedDB: guarda PDF convertido + margens por documento ---------- */
+  var dbP = null;
+  function db(){
+    if(dbP) return dbP;
+    dbP = new Promise(function(res,rej){
+      try{
+        var r = indexedDB.open('anda_folha_timbrada',1);
+        r.onupgradeneeded = function(){ r.result.createObjectStore('lh'); };
+        r.onsuccess = function(){ res(r.result); };
+        r.onerror = function(){ rej(r.error); };
+      }catch(e){ rej(e); }
+    });
+    return dbP;
+  }
+  function idbPut(k,v){ return db().then(function(d){ return new Promise(function(res){
+    var t=d.transaction('lh','readwrite'); t.objectStore('lh').put(v,k); t.oncomplete=res; t.onerror=res; });}).catch(function(){}); }
+  function idbGet(k){ return db().then(function(d){ return new Promise(function(res){
+    var q=d.transaction('lh').objectStore('lh').get(k); q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);}; });}).catch(function(){return null;}); }
+  function save(tab){ return idbPut(tab,{img:(window.letterheads||{})[tab]||null, cfg:cfg[tab], v:2}); }
+
+  /* ---------- pdf.js ---------- */
+  var pdfP = null;
+  function loadPdfJs(){
+    if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if(pdfP) return pdfP;
+    pdfP = new Promise(function(res,rej){
+      var s=document.createElement('script'); s.src=PDFJS+'pdf.min.js';
+      s.onload=function(){ window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'; res(window.pdfjsLib); };
+      s.onerror=function(){ pdfP=null; rej(new Error('Não foi possível carregar o leitor de PDF (verifique a internet).')); };
+      document.head.appendChild(s);
+    });
+    return pdfP;
+  }
+  function isA4(w,h){
+    var a=Math.min(w,h), b=Math.max(w,h);
+    return Math.abs(a-A4[0])<=6 && Math.abs(b-A4[1])<=6;   /* tolerância ≈ 2 mm */
+  }
+  function pdfToImage(file){
+    return Promise.all([loadPdfJs(), file.arrayBuffer()]).then(function(r){
+      return r[0].getDocument({data:r[1]}).promise;
+    }).then(function(pdf){ return pdf.getPage(1); }).then(function(page){
+      var v1 = page.getViewport({scale:1});
+      if(!isA4(v1.width, v1.height)){
+        var mm=function(p){return Math.round(p*25.4/72);};
+        throw new Error('O PDF não é A4 ('+mm(v1.width)+' × '+mm(v1.height)+' mm). Exporte a folha timbrada em A4 (210 × 297 mm).');
+      }
+      var land = v1.width > v1.height;
+      var vp = page.getViewport({scale:(land?3300:2340)/v1.width});   /* ≈ 200 dpi */
+      var c = document.createElement('canvas');
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      var ctx = c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
+      return page.render({canvasContext:ctx, viewport:vp}).promise.then(function(){
+        return {url:c.toDataURL('image/jpeg',0.9), land:land};
+      });
+    });
+  }
+
+  /* ---------- UI ---------- */
+  function box(tab){ return document.getElementById('lh-'+tab+'-box'); }
+  function msg(tab,text,kind){
+    var b=box(tab); if(!b) return; var el=b.querySelector('.lhx-msg');
+    if(!text){ if(el) el.remove(); return; }
+    if(!el){ el=document.createElement('div'); b.appendChild(el); }
+    el.className='lhx-msg '+(kind||''); el.textContent=text;
+  }
+  function showInBox(tab){
+    var url=(window.letterheads||{})[tab], b=box(tab); if(!b) return;
+    var img=document.getElementById('lh-'+tab+'-img'), act=document.getElementById('lh-'+tab+'-actions');
+    if(url){
+      if(img){ img.src=url; img.style.display='block'; img.style.maxHeight='180px'; img.style.width='auto'; img.style.border='1px solid #ddd'; }
+      if(act) act.style.display='flex'; b.classList.add('has-img');
+    }
+  }
+  function syncControls(tab){
+    var b=box(tab); if(!b) return; var c=cfg[tab];
+    b.querySelectorAll('[data-lhx]').forEach(function(el){ el.value=c[el.getAttribute('data-lhx')]; });
+    var o=b.querySelector('.lhx-orient');
+    if(o) o.textContent = window.letterheads && window.letterheads[tab]
+      ? (c.land ? '📄 A4 Horizontal (do PDF)' : '📄 A4 Vertical (do PDF)') : '— sem PDF carregado —';
+  }
+  function buildControls(tab){
+    var b=box(tab); if(!b || b.querySelector('.lhx-opts')) return;
+    var inp=document.getElementById('lh-'+tab+'-file');
+    if(inp) inp.setAttribute('accept','application/pdf,.pdf');
+    var p=b.querySelector('p'); if(p) p.textContent='Carregue a folha timbrada em PDF A4 (vertical ou horizontal). O texto do documento fica por cima.';
+    b.querySelectorAll('button').forEach(function(bt){ if(/Carregar imagem/.test(bt.textContent)) bt.textContent='📎 Carregar PDF A4'; });
+    var d=document.createElement('div'); d.className='lhx-opts';
+    d.innerHTML =
+      '<div class="lhx-orient"></div>'+
+      '<label>Margem topo (mm)<input type="number" min="0" max="150" data-lhx="mt"></label>'+
+      '<label>Margem baixo (mm)<input type="number" min="0" max="150" data-lhx="mb"></label>'+
+      '<label>Margem lados (mm)<input type="number" min="0" max="80" data-lhx="ml"></label>'+
+      '<div class="lhx-hint">As margens definem onde começa o texto, para não ficar por cima do logótipo/rodapé. A orientação vem do próprio PDF.</div>';
+    d.addEventListener('change', function(e){
+      var k=e.target.getAttribute('data-lhx'); if(!k) return;
+      cfg[tab][k] = Math.max(0, +e.target.value||0);
+      apply(tab); save(tab);
+    });
+    b.appendChild(d); syncControls(tab);
+  }
+
+  /* ---------- Aplicar às pré-visualizações ---------- */
+  function apply(tab){
+    var cont=document.getElementById(DOCS[tab]); if(!cont) return;
+    var c=cfg[tab], has=!!(window.letterheads && window.letterheads[tab]);
+    cont.querySelectorAll('.doc-card').forEach(function(card){
+      card.classList.toggle('lh-full', has);
+      card.classList.toggle('lh-land', has && !!c.land);
+      card.style.setProperty('--lh-mt', c.mt+'mm');
+      card.style.setProperty('--lh-mb', c.mb+'mm');
+      card.style.setProperty('--lh-ml', c.ml+'mm');
+    });
+  }
+  function refreshCards(tab){
+    var cont=document.getElementById(DOCS[tab]); if(!cont || typeof window.lhHtml!=='function') return;
+    cont.querySelectorAll('.doc-card .doc-letterhead').forEach(function(el){ el.outerHTML = window.lhHtml(tab); });
+    apply(tab);
+  }
+
+  /* ---------- Substituir funções existentes ---------- */
+  var origRemove = window.removeLetterhead;
+
+  window.setLetterhead = function(tab, input){
+    var f = input && input.files && input.files[0];
+    if(!f) return;
+    var isPdf = f.type==='application/pdf' || /\.pdf$/i.test(f.name);
+    if(!isPdf){ msg(tab,'❌ Só é aceite PDF A4. Exporte a folha timbrada em PDF.','err'); input.value=''; return; }
+    msg(tab,'⏳ A ler o PDF…','warn');
+    pdfToImage(f).then(function(r){
+      window.letterheads[tab] = r.url;
+      cfg[tab].land = r.land;
+      msg(tab,''); showInBox(tab); syncControls(tab); refreshCards(tab); save(tab);
+    }).catch(function(e){ msg(tab,'❌ '+(e && e.message || 'Erro ao ler o PDF.'),'err'); console.error(e); })
+      .then(function(){ input.value=''; });
+  };
+
+  window.removeLetterhead = function(tab){
+    if(typeof origRemove==='function') origRemove.apply(this, arguments);
+    window.letterheads[tab]=null; delete cfg[tab].land; msg(tab,'');
+    setTimeout(function(){ syncControls(tab); refreshCards(tab); save(tab); }, 50);
+  };
+
+  /* ---------- Observar novas pré-visualizações ---------- */
+  TABS.forEach(function(tab){
+    var cont=document.getElementById(DOCS[tab]); if(!cont) return;
+    new MutationObserver(function(){ apply(tab); }).observe(cont,{childList:true});
+  });
+
+  /* ---------- Arranque ---------- */
+  TABS.forEach(function(tab){
+    buildControls(tab);
+    idbGet(tab).then(function(v){
+      if(!v || v.v!==2) return;                      /* ignora dados antigos (imagens) */
+      cfg[tab]=Object.assign({},DEF[tab],v.cfg||{});
+      if(v.img && window.letterheads){ window.letterheads[tab]=v.img; showInBox(tab); refreshCards(tab); }
+      syncControls(tab); apply(tab);
+    });
+  });
+})();
+</script>
+<!-- ═════════════ fim do add-on Folha Timbrada ═════════════ -->
 </body>
 </html>
