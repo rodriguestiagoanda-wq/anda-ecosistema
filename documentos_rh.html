@@ -1666,6 +1666,521 @@ document.addEventListener('DOMContentLoaded', function() {
   loadColabs();
 });
 </script>
+<!-- ═════════════ ANDA Documentos RH — add-on v4: distrito/província, textos padrão editáveis, TdR, impressão sem margens; configurações e folha timbrada guardadas na BD Neon ═════════════ -->
+<script id="anda-docs-v4">
+(function ANDA_DOCS_V4(){
+'use strict';
+/* ═══════════════════════════════════════════════════════════════════
+   ANDA · Documentos RH — add-on v4
+   • Distrito e Província em todos os documentos
+   • Textos padrão visíveis e editáveis (guardados) + edição directa no documento
+   • TdR das funções: leitura do PDF/DOCX/TXT e resumo das actividades p/ certificado
+   • Impressão sem margens, sem cabeçalhos/rodapés do navegador
+   ═══════════════════════════════════════════════════════════════════ */
+var AI_URL = ''; /* opcional: endpoint (ex. Cloudflare Worker com IA) que recebe {tarefa,cargo,texto} e devolve {resumo} */
+var DB_KEY = 'docs_rh';
+var store = { textos:{}, tdr:{} };
+var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+var MAMMOTH = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+
+var TPL = {
+ decl:{ vars:['nome','cargo','distrito','provincia','signatario','contrato','tipo_sal','valor','valor_extenso','finalidade','banco'], k:{
+  assunto:['Assunto','ASSUNTO: Declaração de Rendimentos'],
+  saudacao:['Saudação','Prezados Senhores,'],
+  corpo1:['Parágrafo 1','Por meio da presente, a **ANDA – Associação Nacional de Desenvolvimento Auto-Sustentado**, entidade implementadora do Projecto VIVA+ na província de {provincia}, representada pelo(a) Senhor(a) **{signatario}**, vem por este meio declarar que o(a) Trabalhador(a) **{nome}**, com contrato {contrato}, exercendo as funções de **{cargo}**, alocado(a) na província de **{provincia}**, distrito de **{distrito}**, aufere um rendimento mensal {tipo_sal} de **{valor} ({valor_extenso})**.'],
+  corpo2:['Parágrafo 2','Emitimos esta declaração a pedido do(a) Trabalhador(a), para apresentação junto à vossa instituição bancária, para fins de **{finalidade}**.'],
+  fecho:['Fecho','Atenciosamente,']
+ }},
+ cert:{ vars:['nome','cargo','distrito','provincia','inicio','fim','projecto','financiador','actividades'], k:{
+  titulo:['Título','Certificado de Trabalho'],
+  corpo1:['Parágrafo 1','Certifica-se que o(a) **Trabalhador(a) {nome}** foi colaborador(a) desta Organização no período compreendido entre o dia **{inicio}** a **{fim}**, desempenhando as funções de **{cargo}**, alocado(a) na província de **{provincia}**, distrito de **{distrito}**, no Projecto **{projecto}**, financiado por **{financiador}**, onde realizou {actividades}.'],
+  actividades:['Actividades padrão (usado quando não há TdR nem descrição global)','actividades no âmbito do projecto'],
+  corpo2:['Parágrafo 2','No período em que colaborou na ANDA, nada consta que o(a) desabone.'],
+  corpo3:['Parágrafo 3','Por ser verdade e ao abrigo da Lei do Trabalho de Moçambique (Lei n.º 13/2023, de 25 de Agosto), mandei passar o presente Certificado que vai ser por mim assinado e carimbado com tinta a óleo em uso nesta organização.']
+ }},
+ oferta:{ vars:['nome','cargo','provincia','distrito','projecto','regime','periodo','baseado','valor','valor_extenso','tipo_sal','inicio','prazo','acordo','probatorio'], k:{
+  titulo_normal:['Título (contrato)','Carta de Oferta de Emprego'],
+  titulo_vol:['Título (voluntariado)','Carta de Oferta de Trabalho no regime de voluntariado'],
+  corpo1:['Parágrafo 1','Por incumbência da Direcção da ANDA, tenho o prazer de oferecer-lhe a posição de **{cargo}**, afecto(a) na Província de **{provincia}**, distrito de **{distrito}**, no Projecto **{projecto}**{regime}, {periodo}, renovável caso haja necessidade.'],
+  corpo2:['Parágrafo 2','Comunicamos que estará baseado(a) no **{baseado}** e com constantes deslocações para as comunidades abrangidas pelo projecto sempre que for necessário.'],
+  salario_normal:['Salário (contrato)','**O vencimento base para esta posição** é de **{valor} ({valor_extenso})** mensais {tipo_sal}, com deduções fiscais reguladas na Lei do Trabalho (Lei n.º 13/2023, de 25 de Agosto) e demais legislação aplicável. Terá igualmente direito a subsídio de comunicação, férias e outros quando aplicáveis.'],
+  salario_vol:['Subsídio (voluntariado)','**Condições Financeiras e Benefícios:**\n**Subsídio de Voluntariado:** O valor mensal líquido é de **{valor} ({valor_extenso})**, sem quaisquer deduções fiscais.\nA contribuição para o INSS será de carácter voluntário.\n**Outros Direitos:** Terá igualmente direito a subsídio de comunicação, férias e outros benefícios quando aplicáveis.'],
+  inicio_txt:['Início','A data prevista para o início das actividades é **{inicio}**, dependendo da confirmação a esta carta até o dia **{prazo}**.'],
+  condicoes:['Condições','Esta oferta é subordinada à assinatura tanto do {acordo} e das políticas internas desta organização. Aceitando esta oferta, estará sujeito a um período probatório de **{probatorio} dias** em conformidade com as políticas da ANDA.'],
+  final_txt:['Parágrafo final','É com todo o prazer que enviamos esta oferta e esperamos que seja uma oportunidade adicional para sua carreira profissional.'],
+  fecho:['Fecho','Atenciosamente,'],
+  aceitacao:['Aceitação do candidato','**Tenho a honra de aceitar o emprego nas condições estabelecidas nesta carta.**']
+ }},
+ termino:{ vars:['nome','cargo','distrito','provincia','projecto','financiador','signatario','sig_cargo','data_termino','tipo','outro'], k:{
+  assunto:['Assunto','ASSUNTO: Comunicação de Término de Contrato ({tipo}) — {data_termino}'],
+  saudacao:['Saudação','Prezado(a);'],
+  fm1:['Força maior — parágrafo 1','Pela presente, a **ANDA – Associação Nacional para o Desenvolvimento Auto-Sustentado**, entidade implementadora do Projeto **{projecto}** na província de {provincia}, representada pelo(a) Senhor(a) **{signatario}**, na qualidade de {sig_cargo}, no âmbito das orientações institucionais relativas às medidas de gestão de recursos humanos, resultantes da restrição orçamental da subvenção do **{financiador}** e do quadro de financiamento do Projecto **{projecto}**, vem por este meio comunicar ao(à) Trabalhador(a) **{nome}**, **{cargo}**, alocado(a) no distrito de **{distrito}**, província de **{provincia}**, que o seu contrato de trabalho terá término no dia **{data_termino}**, constituindo, por isso, uma decisão **por força maior**, nos termos previstos na Lei do Trabalho (Lei n.º 13/2023, de 25 de Agosto) e nas cláusulas do seu contrato de trabalho.'],
+  fm_obs:['Força maior — parágrafo 2 (se não houver observações)','Neste momento, a ANDA encontra-se a aguardar novas orientações sobre a continuidade do financiamento e o enquadramento dos recursos humanos para os próximos períodos.'],
+  fm_direitos:['Força maior — direitos','Reiteramos que todos os direitos adquiridos até a data referida serão devidamente assegurados.'],
+  n1:['Outros motivos — parágrafo 1','Esperamos que esta carta encontre o(a) Trabalhador(a) em boa saúde e ânimo. Como parte do procedimento padrão previsto na Lei do Trabalho (Lei n.º 13/2023, de 25 de Agosto), informamos que o vínculo laboral do(a) Trabalhador(a) **{nome}** com a ANDA, na qualidade de **{cargo}** no distrito de **{distrito}**, província de **{provincia}**, cessa no dia **{data_termino}**{outro}.'],
+  n2:['Outros motivos — parágrafo 2','Gostaríamos de destacar que este processo decorre {tipo} e queremos expressar a nossa gratidão pela dedicação e profissionalismo demonstrado ao longo do período em que integrou a equipa.'],
+  agradecimento:['Agradecimento final','A ANDA reconhece e agradece o seu contributo, dedicação e compromisso durante o período em que integrou as actividades do Projecto **{projecto}**. Colocamo-nos à disposição para prestar esclarecimentos adicionais que por ventura existirem.']
+ }}
+};
+
+/* ---------- helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function val(id){ var e=$(id); return e ? e.value : ''; }
+function get(tipo,key){ var t=store.textos[tipo]; return (t && typeof t[key]==='string') ? t[key] : TPL[tipo].k[key][1]; }
+function fill(s,v){ return s.replace(/\{(\w+)\}/g, function(m,k){ return Object.prototype.hasOwnProperty.call(v,k) ? (v[k]==null?'':v[k]) : m; }); }
+function md(s){ return s.replace(/\*\*([\s\S]+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
+function T(tipo,key,v){ return md(fill(get(tipo,key), v||{})); }
+function sigNomeOf(p,def){ var s=$(p+'-sigPerson'); return (s && s.selectedIndex>0) ? signatarios[s.value].nome : def; }
+function norm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function dash(s){ return s ? s : '—'; }
+
+/* ---------- guardar: tudo na base de dados Neon (via Worker), nada no navegador ---------- */
+var ensureP=null, dbStatus='a ligar';
+function ensureTable(){
+ if(!ensureP) ensureP = nq('CREATE TABLE IF NOT EXISTS rh_doc_config (chave text PRIMARY KEY, valor jsonb NOT NULL, actualizado timestamptz DEFAULT NOW())',[])
+  .then(function(r){ if(r===null){ ensureP=null; throw new Error('Sem ligação à base de dados'); } });
+ return ensureP;
+}
+function parseV(v){ return typeof v==='string' ? JSON.parse(v) : v; }
+function dbGet(chave){
+ return ensureTable().then(function(){ return nq('SELECT valor FROM rh_doc_config WHERE chave=$1',[chave]); })
+  .then(function(r){ if(r===null) throw new Error('Erro ao ler da base de dados'); return (r[0] && r[0].valor) ? parseV(r[0].valor) : null; });
+}
+function dbSet(chave,valor){
+ return ensureTable().then(function(){
+  return nq('INSERT INTO rh_doc_config (chave, valor, actualizado) VALUES ($1, $2::jsonb, NOW()) ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, actualizado=NOW()',[chave, JSON.stringify(valor)]);
+ }).then(function(r){ if(r===null) throw new Error('Erro ao gravar na base de dados'); setStatus('ok'); return true; })
+  .catch(function(e){ setStatus('erro'); console.error('[DOCS v4]',e); return false; });
+}
+function setStatus(s){
+ dbStatus=s;
+ document.querySelectorAll('.anda-db-status').forEach(function(el){
+  el.textContent = s==='ok' ? '🟢 Guardado na base de dados (Neon)' : (s==='erro' ? '🔴 Sem ligação à base de dados — alterações NÃO guardadas' : '⏳ A ligar à base de dados…');
+  el.style.color = s==='ok' ? '#16a34a' : (s==='erro' ? '#dc2626' : '#64748b');
+ });
+}
+function loadDb(){
+ return dbGet(DB_KEY).then(function(v){
+  if(v){ store.textos=v.textos||{}; store.tdr=v.tdr||{}; }
+  setStatus('ok');
+ }).catch(function(e){ setStatus('erro'); console.error('[DOCS v4]',e); });
+}
+var saveTimer=null;
+function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(function(){ dbSet(DB_KEY, store); }, 700); }
+
+/* Folha timbrada (PDF convertido + margens) também na base de dados — usado pelo add-on Folha Timbrada */
+function lhLegacy(tab){ /* migra uma vez a folha antiga guardada no navegador (IndexedDB) para a BD */
+ return new Promise(function(res){
+  try{
+   var q=indexedDB.open('anda_folha_timbrada',1);
+   q.onupgradeneeded=function(){ q.result.createObjectStore('lh'); };
+   q.onsuccess=function(){ try{ var g=q.result.transaction('lh').objectStore('lh').get(tab);
+     g.onsuccess=function(){ var v=g.result; if(v && v.v===2 && v.img){ dbSet('folha_timbrada_'+tab, v); res(v); } else res(null); };
+     g.onerror=function(){ res(null); }; }catch(e){ res(null); } };
+   q.onerror=function(){ res(null); };
+  }catch(e){ res(null); }
+ });
+}
+window.andaLhGet = function(tab){
+ return dbGet('folha_timbrada_'+tab).then(function(v){ return v || lhLegacy(tab); }).catch(function(){ setStatus('erro'); return null; });
+};
+window.andaLhSave = function(tab,v){ return dbSet('folha_timbrada_'+tab, v); };
+
+/* ---------- estilos ---------- */
+var css = document.createElement('style'); css.id='anda-v4-style';
+css.textContent = [
+'.anda-tpl summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);list-style:revert}',
+'.anda-tpl[open] summary{margin-bottom:12px}',
+'.anda-tpl-hint{font-size:11.5px;color:var(--gray);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:12px;line-height:1.7}',
+'.anda-tpl-hint code{background:#e2e8f0;border-radius:4px;padding:0 4px;font-size:11px}',
+'.anda-tpl-row{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.3px}',
+'.anda-tpl-row textarea{text-transform:none;letter-spacing:0;font-weight:400;border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;color:var(--text);resize:vertical;line-height:1.5;outline:none}',
+'.anda-tpl-row textarea:focus{border-color:var(--blue)}',
+'.anda-tpl-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
+'.anda-tpl-msg{font-size:12px;color:var(--green)}',
+'.anda-db-status{font-size:12px;font-weight:600}',
+'.anda-edit-hint{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:3px 10px;margin-left:10px;font-weight:500}',
+'.doc-card [contenteditable="true"]{cursor:text}',
+'.doc-card [contenteditable="true"]:hover{outline:1px dashed #93c5fd;outline-offset:2px}',
+'.doc-card [contenteditable="true"]:focus{outline:2px solid #2563ab;outline-offset:2px;background:rgba(37,99,171,.04)}',
+'#tdr-list table{width:100%;border-collapse:collapse;font-size:12px}',
+'#tdr-list th,#tdr-list td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}',
+'#tdr-list th{background:var(--light);font-size:11px;text-transform:uppercase;color:var(--gray)}',
+/* impressão: página A4 sem margens => o navegador não imprime data, hora, URL, título nem nº de página */
+'@page{size:A4 portrait;margin:0}',
+'@page :first{margin:0}',
+'@page lhport{size:A4 portrait;margin:0}',
+'@page lhland{size:A4 landscape;margin:0}',
+'@media print{',
+' html,body{background:#fff !important;min-height:0 !important;margin:0 !important;padding:0 !important}',
+' .layout,.main,.preview-wrap,.preview-container{margin:0 !important;padding:0 !important;gap:0 !important;min-height:0 !important;border:none !important}',
+' .doc-card{border:none !important;border-radius:0 !important;box-shadow:none !important;outline:none !important;margin:0 !important}',
+' .doc-card:not(.lh-full){width:210mm !important;min-height:0 !important;padding:18mm 20mm !important}',
+' html body .doc-card.lh-full{width:210mm !important;height:297mm !important}',
+' html body .doc-card.lh-full.lh-land{width:297mm !important;height:210mm !important}',
+' .doc-card.lh-full .doc-letterhead,.doc-card.lh-full .doc-letterhead img{-webkit-print-color-adjust:exact;print-color-adjust:exact}',
+' .doc-card [contenteditable]{outline:none !important;background:transparent !important}',
+' .anda-edit-hint,.anda-tpl,#tdr-sec{display:none !important}',
+'}'
+].join('\n');
+document.head.appendChild(css);
+
+/* ---------- painel de textos padrão ---------- */
+function flash(d,txt){ var m=d.querySelector('.anda-tpl-msg'); if(!m) return; m.textContent=txt; clearTimeout(m._t); m._t=setTimeout(function(){ m.textContent=''; },2500); }
+function fillTpl(tab,d){ d.querySelectorAll('textarea[data-k]').forEach(function(t){ t.value=get(tab,t.getAttribute('data-k')); }); }
+function buildTplPanel(tab){
+ var tabEl=$('tab-'+tab); if(!tabEl || tabEl.querySelector('.anda-tpl')) return;
+ var bar=tabEl.querySelector('.action-bar'); if(!bar) return;
+ var def=TPL[tab];
+ var d=document.createElement('details'); d.className='form-section no-print anda-tpl'; d.setAttribute('data-tab',tab);
+ var h='<summary>📝 Textos padrão do documento — ver e corrigir</summary>'+
+  '<div class="anda-tpl-hint">Campos preenchidos automaticamente (entre chavetas): '+def.vars.map(function(v){return '<code>{'+v+'}</code>';}).join(' ')+
+  '<br><code>**texto**</code> = negrito. As alterações ficam guardadas na base de dados e valem para todos os documentos deste tipo — clique <strong>Pré-visualizar</strong> para aplicar.'+
+  '<br>Para corrigir <strong>só um documento</strong>, clique directamente no texto dele na pré-visualização.</div>';
+ Object.keys(def.k).forEach(function(k){
+  var rows=Math.min(8, Math.max(1, Math.ceil(def.k[k][1].length/105)));
+  h+='<label class="anda-tpl-row"><span>'+def.k[k][0]+'</span><textarea data-k="'+k+'" rows="'+rows+'"></textarea></label>';
+ });
+ h+='<div class="anda-tpl-actions"><button type="button" class="btn btn-primary" data-act="apply">👁 Aplicar na pré-visualização</button><button type="button" class="btn btn-gray" data-act="reset">↺ Repor textos originais</button><span class="anda-tpl-msg"></span><span class="anda-db-status"></span></div>';
+ d.innerHTML=h;
+ fillTpl(tab,d);
+ d.addEventListener('input', function(e){
+  var k=e.target.getAttribute('data-k'); if(!k) return;
+  store.textos[tab]=store.textos[tab]||{}; store.textos[tab][k]=e.target.value; save(); flash(d,'✏️ Alterado');
+ });
+ d.querySelector('[data-act=apply]').onclick=function(){ previewDocs(tab); };
+ d.querySelector('[data-act=reset]').onclick=function(){
+  if(!confirm('Repor todos os textos originais deste documento?')) return;
+  delete store.textos[tab]; save(); fillTpl(tab,d); flash(d,'↺ Textos originais repostos');
+ };
+ bar.parentNode.insertBefore(d,bar);
+}
+
+/* ---------- edição directa no documento ---------- */
+function makeEditable(cont){
+ cont.querySelectorAll('.doc-card').forEach(function(card){
+  Array.prototype.forEach.call(card.children, function(ch){
+   if(ch.classList.contains('doc-letterhead') || ch.classList.contains('no-print')) return;
+   ch.setAttribute('contenteditable','true'); ch.setAttribute('spellcheck','true');
+  });
+ });
+}
+function addHints(){
+ ['decl','cert','oferta','termino'].forEach(function(tab){
+  var h=document.querySelector('#preview-'+tab+' .preview-header h3');
+  if(h && !h.querySelector('.anda-edit-hint')) h.insertAdjacentHTML('beforeend','<span class="anda-edit-hint no-print">✏️ Clique no texto para corrigir antes de imprimir</span>');
+ });
+}
+function finish(p,tab,html,n){
+ var el=$(p+'-docs'); el.innerHTML=html;
+ $(p+'-previewCount').textContent=n;
+ makeEditable(el);
+ $('preview-'+tab).classList.add('show');
+}
+
+/* ---------- Oferta: província / distrito ---------- */
+function addOfertaFields(){
+ var b=$('o-baseado'); if(!b || $('o-provincia')) return;
+ var g=b.closest('.form-group');
+ function mk(id,label,ph,v){ var x=document.createElement('div'); x.className='form-group'; x.innerHTML='<label>'+label+'</label><input type="text" id="'+id+'" placeholder="'+ph+'" value="'+v+'">'; return x; }
+ g.parentNode.insertBefore(mk('o-distrito','Distrito alocado','Ex: Moatize',''), g.nextSibling);
+ g.parentNode.insertBefore(mk('o-provincia','Província alocada','Ex: Tete','Tete'), g.nextSibling);
+}
+
+/* ═════════════ PREVIEWS (substituem as originais) ═════════════ */
+window.previewDecl = function(){
+ var selected=colaboradores.filter(function(c){return c.sel_d;});
+ if(!selected.length){ alert('Seleccione pelo menos um colaborador.'); return; }
+ var banco=val('d-banco'), final=val('d-final')||val('d-finalPrev'), data=val('d-data'), local=val('d-local')||'Tete';
+ var sigNome=sigNomeOf('d','______________________________');
+ if(!banco){ alert('Seleccione o banco destinatário.'); return; }
+ if(!final){ alert('Indique a finalidade da declaração.'); return; }
+ var html='';
+ selected.forEach(function(c){
+  var valor = tipoSal.d==='liquido' ? calcLiquido(c.salario_base) : c.salario_base;
+  var v={ nome:c.nome, cargo:dash(c.cargo), distrito:dash(c.distrito), provincia:c.provincia||'Tete', signatario:sigNome,
+   contrato:c.fim_contrato?'a prazo certo':'por tempo indeterminado', tipo_sal:tipoSal.d==='liquido'?'líquido':'bruto',
+   valor:fmtMZN(valor), valor_extenso:numToWords(valor), finalidade:final, banco:banco };
+  html+='<div class="doc-card">'+lhHtml('decl')+
+   '<div class="doc-dest"><strong>Para:</strong></div>'+
+   '<div class="doc-dest">'+banco+'</div>'+
+   '<div class="doc-dest">= '+local+' =</div>'+
+   '<div class="doc-date"><strong>Data:</strong> '+fmtDatePT(data)+'</div>'+
+   '<div class="doc-subject">'+T('decl','assunto',v)+'</div>'+
+   '<div class="doc-body">'+T('decl','saudacao',v)+'</div>'+
+   '<div class="doc-body">'+T('decl','corpo1',v)+'</div>'+
+   '<div class="doc-body">'+T('decl','corpo2',v)+'</div>'+
+   '<div class="doc-body">'+T('decl','fecho',v)+'</div>'+
+   sigBlock('d')+'</div>';
+ });
+ finish('d','decl',html,selected.length);
+};
+
+window.previewCert = function(){
+ var selected=colaboradores.filter(function(c){return c.sel_c;});
+ if(!selected.length){ alert('Seleccione pelo menos um colaborador.'); return; }
+ var projecto=val('c-projecto'), financiador=val('c-financiador'), local=val('c-local')||'Tete', data=val('c-data');
+ var glob=val('c-actividades').trim();
+ var usar=$('c-usarTdr') ? $('c-usarTdr').checked : true;
+ var html='';
+ selected.forEach(function(c){
+  var inicioVal=c.data_admissao||c.inicio_contrato||'';
+  var fimVal=c.data_desvinculacao||c.fim_contrato||'';
+  var uid='cert_'+c._dbId;
+  var tdr = usar && store.tdr[norm(c.cargo)];
+  var acts = (tdr && tdr.resumo) ? tdr.resumo : (glob || get('cert','actividades'));
+  var v={ nome:c.nome, cargo:dash(c.cargo), distrito:dash(c.distrito), provincia:c.provincia||'Tete',
+   inicio:'<span id="'+uid+'-inicio">'+fmtDatePT(inicioVal)+'</span>', fim:'<span id="'+uid+'-fim">'+fmtDatePT(fimVal)+'</span>',
+   projecto:projecto, financiador:financiador, actividades:acts };
+  html+='<div class="doc-card" id="card-'+uid+'">'+lhHtml('cert')+
+   '<div class="doc-title-cert">'+T('cert','titulo',v)+'</div>'+
+   '<div class="doc-body">'+T('cert','corpo1',v)+'</div>'+
+   '<div class="doc-body">'+T('cert','corpo2',v)+'</div>'+
+   '<div class="doc-body">'+T('cert','corpo3',v)+'</div>'+
+   '<div class="no-print" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin:12px 0;font-size:12px;font-family:Segoe UI,sans-serif;">'+
+    '<strong>✏️ Editar datas para '+esc(c.nome)+':</strong>'+(tdr&&tdr.resumo?' <span style="color:#166534;">· 🧠 actividades do TdR da função</span>':'')+
+    '<div style="display:flex;gap:12px;margin-top:8px;align-items:center;flex-wrap:wrap;">'+
+    '<label>Início: <input type="date" value="'+inicioVal+'" onchange="updateCertDate(\''+uid+'\',\'inicio\',this.value)" style="margin-left:4px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:12px;"></label>'+
+    '<label>Fim: <input type="date" value="'+fimVal+'" onchange="updateCertDate(\''+uid+'\',\'fim\',this.value)" style="margin-left:4px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:12px;"></label>'+
+    '</div></div>'+
+   '<div class="doc-local-date">'+local+', '+fmtDatePT(data)+'</div>'+
+   sigBlock('c')+'</div>';
+ });
+ finish('c','cert',html,selected.length);
+};
+
+window.previewOferta = function(){
+ syncNomes();
+ var nomes=ofertaNomes.filter(function(n){return n.nome;});
+ if(!nomes.length){ alert('Adicione pelo menos um candidato.'); return; }
+ var cargo=val('o-cargo')||'______________________________';
+ var salBase=parseFloat(val('o-salario'))||0;
+ var isVol=val('o-regime')==='voluntariado';
+ var inicio=val('o-inicioContrato'), fim=val('o-fimContrato'), prazo=val('o-prazoConfirm');
+ var local=val('o-local')||'Tete', data=val('o-data');
+ var valor = tipoSal.o==='liquido' ? calcLiquido(salBase) : salBase;
+ var sigNome=sigNomeOf('o','Tiago Jaime Ronsolo');
+ var sigH = sigImgs.o ? '<img src="'+sigImgs.o+'" style="height:50px;display:block;margin:8px 0;">' : '';
+ var periodo = inicio && fim ? 'previsto para '+fmtDatePT(inicio)+' a '+fmtDatePT(fim) : (inicio ? 'com início em '+fmtDatePT(inicio) : '___________');
+ var html='';
+ nomes.forEach(function(n){
+  var v={ nome:n.nome, cargo:cargo, provincia:val('o-provincia')||'Tete', distrito:val('o-distrito')||'______________',
+   projecto:val('o-projecto'), regime:isVol?' no regime de voluntariado':'', periodo:periodo,
+   baseado:val('o-baseado')||'______________________________', valor:fmtMZN(valor), valor_extenso:numToWords(valor),
+   tipo_sal:tipoSal.o==='liquido'?'líquidos':'brutos', inicio:inicio?fmtDatePT(inicio):'_____________',
+   prazo:prazo?fmtDatePT(prazo):'_____________', acordo:isVol?'Acordo de Voluntário':'contrato', probatorio:val('o-probatorio')||'60' };
+  html+='<div class="doc-card">'+lhHtml('oferta')+
+   '<div class="doc-date">'+local+', '+fmtDatePT(data)+'</div>'+
+   '<div class="doc-dest">Re: <strong>'+T('oferta',isVol?'titulo_vol':'titulo_normal',v)+'</strong></div><br>'+
+   '<div class="doc-dest">Caro(a) Senhor(a): <strong>'+n.nome+'</strong></div><br>'+
+   '<div class="doc-body">'+T('oferta','corpo1',v)+'</div>'+
+   '<div class="doc-body">'+T('oferta','corpo2',v)+'</div>'+
+   '<div class="doc-body">'+T('oferta',isVol?'salario_vol':'salario_normal',v)+'</div>'+
+   '<div class="doc-body">'+T('oferta','inicio_txt',v)+'</div>'+
+   '<div class="doc-body">'+T('oferta','condicoes',v)+'</div>'+
+   '<div class="doc-body">'+T('oferta','final_txt',v)+'</div>'+
+   '<div class="doc-body">'+T('oferta','fecho',v)+'</div>'+
+   '<div class="doc-sig"><div class="doc-sig-title">'+val('o-sigCargo')+'</div>'+sigH+'<div class="doc-sig-line"></div><div class="doc-sig-name">/'+sigNome+'/</div></div>'+
+   '<div style="margin-top:40px;border-top:1px dashed #999;padding-top:20px;">'+T('oferta','aceitacao',v)+'<br><br>'+
+   'Assinatura do(a) Candidato(a): ___________________________________<br><br>Data: _____ / _____ / _______</div>'+
+   '</div>';
+ });
+ finish('o','oferta',html,nomes.length);
+};
+
+window.previewTermino = function(){
+ var selected=colaboradores.filter(function(c){return c.sel_t;});
+ if(!selected.length){ alert('Seleccione pelo menos um colaborador.'); return; }
+ var tipoTerm=val('t-tipo'), tipoOutro=val('t-tipoOutro'), dataTerm=val('t-dataTerm');
+ var projecto=val('t-projecto')||'VIVA+', financiador=val('t-financiador')||'Fundo Global';
+ var local=val('t-local')||'Tete', data=val('t-data'), obs=val('t-obs');
+ var sigNome=sigNomeOf('t','Tiago Jaime Ronsolo'), sigCargo=val('t-sigCargo');
+ var tipoLabel={ forca_maior:'por força maior', pre_aviso:'pré-aviso / cessação normal', mutuo_acordo:'por mútuo acordo',
+  disciplinar:'por razões disciplinares', outro:tipoOutro||'outro motivo' }[tipoTerm] || tipoTerm;
+ var sigH = sigImgs.t ? '<img src="'+sigImgs.t+'" style="height:50px;display:block;margin:8px 0;">' : '';
+ var html='';
+ selected.forEach(function(c){
+  var v={ nome:c.nome, cargo:dash(c.cargo), distrito:dash(c.distrito), provincia:c.provincia||'Tete', projecto:projecto,
+   financiador:financiador, signatario:sigNome, sig_cargo:sigCargo, data_termino:fmtDatePT(dataTerm), tipo:tipoLabel,
+   outro: tipoTerm==='outro' ? ' ('+tipoOutro+')' : '' };
+  var corpo = tipoTerm==='forca_maior'
+   ? '<div class="doc-body">'+T('termino','fm1',v)+'</div>'+
+     '<div class="doc-body">'+(obs || T('termino','fm_obs',v))+'</div>'+
+     '<div class="doc-body">'+T('termino','fm_direitos',v)+'</div>'
+   : '<div class="doc-body">'+T('termino','n1',v)+'</div>'+
+     '<div class="doc-body">'+T('termino','n2',v)+'</div>'+
+     (obs ? '<div class="doc-body">'+obs+'</div>' : '');
+  html+='<div class="doc-card">'+lhHtml('termino')+
+   '<div class="doc-date">'+local+', '+fmtDatePT(data)+'</div>'+
+   '<div class="doc-dest"><strong>Prezado(a) Sr.(a):</strong><br>Nome: <strong>'+c.nome+'</strong><br>'+
+   'Distrito: <strong>'+v.distrito+'</strong> / Província: <strong>'+v.provincia+'</strong><br>Posição: <strong>'+v.cargo+'</strong></div><br>'+
+   '<div class="doc-subject">'+T('termino','assunto',v)+'</div>'+
+   '<div class="doc-body">'+T('termino','saudacao',v)+'</div>'+
+   corpo+
+   '<div class="doc-body">'+T('termino','agradecimento',v)+'</div>'+
+   '<div class="doc-local-date">'+local+', aos '+fmtDatePT(data)+'</div>'+
+   '<div style="display:flex;gap:60px;margin-top:40px;flex-wrap:wrap;">'+
+    '<div>O(A) colaborador(a)<br><br><br><div style="border-top:1px solid #000;width:200px;margin-top:40px;"></div><em>'+c.nome+'</em><br>Recebi e tomei conhecimento<br>Data: _____ / _____ / _____</div>'+
+    '<div>'+sigCargo+'<br><br>'+sigH+'<div style="border-top:1px solid #000;width:200px;margin-top:'+(sigImgs.t?'8':'40')+'px;"></div><em>/'+sigNome+'/</em></div>'+
+   '</div></div>';
+ });
+ finish('t','termino',html,selected.length);
+};
+
+/* ═════════════ TdR — leitura e resumo das actividades ═════════════ */
+function loadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){ rej(new Error('Não foi possível carregar o leitor ('+src.split('/').pop()+'). Verifique a internet.')); }; document.head.appendChild(s); }); }
+async function pdfText(file){
+ if(!window.pdfjsLib){ await loadScript(PDFJS+'pdf.min.js'); window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'; }
+ var pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise, out='';
+ for(var i=1;i<=pdf.numPages;i++){
+  var tc=await (await pdf.getPage(i)).getTextContent(), lastY=null;
+  tc.items.forEach(function(it){
+   var y=it.transform ? it.transform[5] : null;
+   if(lastY!==null && y!==null && Math.abs(y-lastY)>2) out+='\n'; else if(out && !/[\s]$/.test(out)) out+=' ';
+   out+=it.str; lastY=y;
+   if(it.hasEOL){ out+='\n'; lastY=null; }
+  });
+  out+='\n';
+ }
+ return out;
+}
+async function docxText(file){
+ if(!window.mammoth) await loadScript(MAMMOTH);
+ var r=await window.mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});
+ return r.value||'';
+}
+async function fileText(file){
+ var n=file.name.toLowerCase();
+ if(n.endsWith('.pdf') || file.type==='application/pdf') return pdfText(file);
+ if(n.endsWith('.docx')) return docxText(file);
+ if(n.endsWith('.txt')) return file.text();
+ throw new Error('Formato não suportado. Use PDF, Word (.docx) ou .txt (ficheiros .doc antigos: guarde como .docx).');
+}
+var BULLET=/^\s*(?:[•●▪◦■□➢➤►✓✔\-–—\*o]|\d{1,2}[\.\)]|\d{1,2}\.\d{1,2}\.?|[a-z]\)|[ivx]+\))\s+/i;
+var START=/(responsabilidades|actividades|atividades|tarefas|fun[cç][oõ]es|deveres|atribui[cç][oõ]es|principais\s+\w+|responsibilities|duties|scope of work|key tasks)/i;
+var END=/^\s*(?:\d{1,2}[\.\)]?\s*)?(requisitos|qualifica|perfil|compet[eê]ncias|experi[eê]ncia|habilita|forma[cç][aã]o|condi[cç][oõ]es|remunera|sal[aá]rio|benef[ií]cios|como candidatar|candidatura|documentos|local de trabalho|dura[cç][aã]o|per[ií]odo|supervis|reporta|requirements|qualifications|skills|education)/i;
+function resumirTdR(txt){
+ var lines=txt.replace(/\r/g,'').replace(/[ \t ]+/g,' ').split('\n').map(function(s){return s.trim();}).filter(Boolean);
+ var s=-1;
+ for(var i=0;i<lines.length;i++){ if(lines[i].length<90 && START.test(lines[i])){ s=i; break; } }
+ var body=[];
+ for(var j=(s<0?0:s+1); j<lines.length; j++){
+  var L=lines[j];
+  if(L.length<90 && END.test(L.replace(BULLET,'')) && body.length) break;
+  body.push(L);
+ }
+ var items=[];
+ body.forEach(function(L){
+  var isB=BULLET.test(L), clean=L.replace(BULLET,'').trim();
+  if(!clean) return;
+  var prev=items[items.length-1];
+  if(!isB && prev && !/[\.;:!]$/.test(prev) && /^[a-zà-ú(]/.test(clean)) items[items.length-1]=prev+' '+clean;
+  else items.push(clean);
+ });
+ items=items.map(function(x){
+  x=x.replace(/\s+/g,' ').replace(/[\s;,\.:]+$/,'').trim();
+  if(x.length>1 && !/^[A-ZÀ-Ú]{2}/.test(x)) x=x.charAt(0).toLowerCase()+x.slice(1);
+  return x;
+ }).filter(function(x){ return x.length>=12 && x.length<=320 && x.split(' ').length>=3 && !(START.test(x) && x.split(' ').length<6); });
+ var seen={}; items=items.filter(function(x){ var k=norm(x).slice(0,60); if(seen[k]) return false; seen[k]=1; return true; });
+ items=items.slice(0,8);
+ if(!items.length) return '';
+ if(items.length===1) return 'actividades de '+items[0];
+ return 'as seguintes actividades: '+items.slice(0,-1).join('; ')+'; e '+items[items.length-1];
+}
+async function gerarResumo(file,cargo){
+ var txt=await fileText(file);
+ if(!txt || txt.replace(/\s/g,'').length<40) throw new Error('Não foi possível ler texto do ficheiro (PDF digitalizado como imagem?). Escreva o resumo manualmente.');
+ if(AI_URL){
+  try{
+   var r=await fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tarefa:'resumo_tdr',cargo:cargo,texto:txt.slice(0,20000)})});
+   var d=await r.json(); if(d && d.resumo) return d.resumo;
+  }catch(e){ console.warn('[TdR] IA indisponível, a usar resumo local', e); }
+ }
+ var res=resumirTdR(txt);
+ if(!res) throw new Error('Não encontrei a lista de responsabilidades/actividades no TdR. Escreva ou cole o resumo manualmente.');
+ return res;
+}
+function tdrMsg(t,kind){ var m=$('tdr-msg'); if(m){ m.textContent=t; m.style.color = kind==='err'?'#dc2626':(kind==='ok'?'#16a34a':'var(--muted)'); } }
+function fillCargos(){
+ var dl=$('tdr-cargos'); if(!dl || !window.colaboradores) return;
+ var cs=Array.from(new Set(colaboradores.map(function(c){return c.cargo;}).filter(Boolean))).sort();
+ dl.innerHTML=cs.map(function(c){return '<option value="'+esc(c)+'">';}).join('');
+}
+function renderTdrList(){
+ var el=$('tdr-list'); if(!el) return;
+ var ks=Object.keys(store.tdr||{});
+ if(!ks.length){ el.innerHTML='<div style="font-size:12px;color:var(--muted);">Ainda não há TdR guardados.</div>'; return; }
+ el.innerHTML='<table><thead><tr><th>Função</th><th>Resumo das actividades</th><th></th></tr></thead><tbody>'+
+  ks.sort().map(function(k){ var t=store.tdr[k];
+   return '<tr><td style="white-space:nowrap;font-weight:600;">'+esc(t.cargo)+'<div style="font-weight:400;color:var(--muted);font-size:11px;">'+esc(t.ficheiro||'')+'</div></td>'+
+    '<td>'+esc(t.resumo.length>220?t.resumo.slice(0,220)+'…':t.resumo)+'</td>'+
+    '<td style="white-space:nowrap;"><button type="button" class="btn btn-gray" style="padding:3px 8px;font-size:11px;" data-ed="'+esc(k)+'">✏️ Editar</button> '+
+    '<button type="button" class="btn btn-red" style="padding:3px 8px;font-size:11px;" data-rm="'+esc(k)+'">✖</button></td></tr>';
+  }).join('')+'</tbody></table>';
+}
+function buildTdr(){
+ var ta=$('c-actividades'); if(!ta || $('tdr-sec')) return;
+ var sec=ta.closest('.form-section');
+ var d=document.createElement('div'); d.className='form-section no-print'; d.id='tdr-sec';
+ d.innerHTML=
+  '<h3>🧠 TdR das Funções — resumo automático das actividades</h3>'+
+  '<div class="anda-tpl-hint">Carregue os Termos de Referência (PDF, Word .docx ou .txt) de uma função. O sistema lê o documento, encontra as responsabilidades/actividades e gera um resumo que pode corrigir. Fica guardado por função e entra nos certificados dos colaboradores com esse cargo. Sem TdR, o certificado usa o texto padrão. Tudo fica guardado na base de dados (Neon), disponível em qualquer computador.</div>'+
+  '<div class="form-grid">'+
+   '<div class="form-group"><label>Função / Cargo</label><input type="text" id="tdr-cargo" list="tdr-cargos" placeholder="Ex: Supervisor Distrital" autocomplete="off"><datalist id="tdr-cargos"></datalist></div>'+
+   '<div class="form-group"><label>Ficheiro TdR</label><input type="file" id="tdr-file" accept=".pdf,.docx,.txt,application/pdf"></div>'+
+   '<div class="form-group full"><label>Resumo das actividades (editável) — entra no certificado depois de “onde realizou …”</label><textarea id="tdr-resumo" rows="4" placeholder="Carregue um TdR e clique Gerar resumo, ou escreva aqui…"></textarea></div>'+
+  '</div>'+
+  '<div class="action-bar" style="margin-top:10px;">'+
+   '<button type="button" class="btn btn-primary" id="tdr-gerar">🧠 Ler TdR e gerar resumo</button>'+
+   '<button type="button" class="btn btn-green" id="tdr-guardar">💾 Guardar para esta função</button>'+
+   '<span id="tdr-msg" style="font-size:12px;color:var(--muted);"></span>'+
+  '</div>'+
+  '<label style="display:flex;gap:8px;align-items:center;margin-top:14px;font-size:13px;cursor:pointer;"><input type="checkbox" id="c-usarTdr" checked style="width:16px;height:16px;"> Incluir no certificado o resumo do TdR quando existir para a função do colaborador</label>'+
+  '<div class="anda-db-status" style="margin-top:10px;"></div>'+
+  '<div id="tdr-list" style="margin-top:12px;"></div>';
+ sec.parentNode.insertBefore(d, sec.nextSibling);
+
+ var cargoI=$('tdr-cargo'), fileI=$('tdr-file'), resI=$('tdr-resumo');
+ cargoI.addEventListener('focus', fillCargos);
+ cargoI.addEventListener('change', function(){ var t=store.tdr[norm(cargoI.value)]; if(t){ resI.value=t.resumo; tdrMsg('Resumo já guardado para esta função — pode editar.'); } });
+ $('tdr-gerar').onclick=async function(){
+  var f=fileI.files && fileI.files[0];
+  if(!f){ tdrMsg('Escolha primeiro o ficheiro do TdR.','err'); return; }
+  tdrMsg('⏳ A ler o TdR…');
+  try{
+   resI.value=await gerarResumo(f, cargoI.value);
+   tdrMsg('✅ Resumo gerado — reveja, corrija se necessário e clique Guardar.','ok');
+  }catch(e){ tdrMsg('❌ '+(e && e.message || 'Erro ao ler o ficheiro.'),'err'); console.error(e); }
+ };
+ $('tdr-guardar').onclick=function(){
+  var cargo=cargoI.value.trim(), resumo=resI.value.trim().replace(/[\s\.]+$/,'');
+  if(!cargo){ tdrMsg('Indique a função/cargo.','err'); return; }
+  if(!resumo){ tdrMsg('O resumo está vazio.','err'); return; }
+  var f=fileI.files && fileI.files[0];
+  var old=store.tdr[norm(cargo)];
+  store.tdr[norm(cargo)]={ cargo:cargo, resumo:resumo, ficheiro:f?f.name:(old&&old.ficheiro)||'', data:new Date().toISOString().slice(0,10) };
+  save(); renderTdrList(); tdrMsg('✅ Guardado para “'+cargo+'”.','ok');
+ };
+ $('tdr-list').addEventListener('click', function(e){
+  var ed=e.target.getAttribute('data-ed'), rm=e.target.getAttribute('data-rm');
+  if(ed && store.tdr[ed]){ cargoI.value=store.tdr[ed].cargo; resI.value=store.tdr[ed].resumo; resI.focus(); tdrMsg('A editar “'+store.tdr[ed].cargo+'” — clique Guardar no fim.'); }
+  if(rm && store.tdr[rm] && confirm('Remover o TdR de “'+store.tdr[rm].cargo+'”?')){ delete store.tdr[rm]; save(); renderTdrList(); }
+ });
+ renderTdrList();
+}
+
+/* ---------- arranque ---------- */
+['decl','cert','oferta','termino'].forEach(buildTplPanel);
+addOfertaFields(); buildTdr(); addHints(); setStatus('a ligar');
+loadDb().then(function(){
+ document.querySelectorAll('.anda-tpl').forEach(function(d){ fillTpl(d.getAttribute('data-tab'), d); });
+ renderTdrList();
+});
+window.ANDA_DOCS_V4 = { store:store, resumirTdR:resumirTdR };
+})();
+</script>
 <!-- ═══════════════════════════════════════════════════════════════════
      ANDA · Folha Timbrada — só PDF A4, página inteira, texto por cima (v3)
      Colar este bloco em documentos_rh.html, imediatamente antes de </body>.
@@ -1745,7 +2260,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var t=d.transaction('lh','readwrite'); t.objectStore('lh').put(v,k); t.oncomplete=res; t.onerror=res; });}).catch(function(){}); }
   function idbGet(k){ return db().then(function(d){ return new Promise(function(res){
     var q=d.transaction('lh').objectStore('lh').get(k); q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);}; });}).catch(function(){return null;}); }
-  function save(tab){ return idbPut(tab,{img:(window.letterheads||{})[tab]||null, cfg:cfg[tab], v:2}); }
+  function save(tab){ var v={img:(window.letterheads||{})[tab]||null, cfg:cfg[tab], v:2}; return window.andaLhSave ? window.andaLhSave(tab,v) : idbPut(tab,v); } /* v4: grava na BD Neon */
 
   /* ---------- pdf.js ---------- */
   var pdfP = null;
@@ -1878,7 +2393,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ---------- Arranque ---------- */
   TABS.forEach(function(tab){
     buildControls(tab);
-    idbGet(tab).then(function(v){
+    (window.andaLhGet ? window.andaLhGet(tab) : idbGet(tab)).then(function(v){ /* v4: lê da BD Neon */
       if(!v || v.v!==2) return;                      /* ignora dados antigos (imagens) */
       cfg[tab]=Object.assign({},DEF[tab],v.cfg||{});
       if(v.img && window.letterheads){ window.letterheads[tab]=v.img; showInBox(tab); refreshCards(tab); }
